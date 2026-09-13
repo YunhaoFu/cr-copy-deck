@@ -723,7 +723,8 @@ function openDetail(deck){
   $("#linkText").textContent = web;
   const warns = deckWarnings(deck);
   $("#dNote").innerHTML = (warns.length ? `<span style="color:#ffb9c0">⛔ ${escapeHtml(warns[0])}</span><br>` : "")
-    + `<b>提示：</b>导入后在游戏内确认卡组；若形态没有生效，请手动调整（游戏可能忽略链接里的形态信息）。`;
+    + `<b>提示：</b>链接里已写入卡组/形态/塔防信息，但游戏导入时只会复制 8 张卡；`
+    + `觉醒、精英、塔防（${tw ? escapeHtml(tw.name) : "tt"}）需要进游戏后手动确认。`;
   const qr = $("#qr"); qr.innerHTML = "";
   try { new QRCode(qr, { text: web, width: 232, height: 232, correctLevel: QRCode.CorrectLevel.M }); }
   catch(err){ qr.innerHTML = `<div style="color:#333;font-size:12px;max-width:232px">二维码生成失败：${escapeHtml(err.message)}</div>`; }
@@ -866,7 +867,7 @@ const TYPE_NAME = { 1: "部队", 2: "法术", 3: "建筑" };
 function matchFilter(c){
   if(FILTERS.type === 4){ if(!c.tower) return false; }       // 塔防：只看塔楼部队
   else if(FILTERS.type){ if(c.tower || c.t !== FILTERS.type) return false; }
-  else if(c.tower) return false;                             // 全部：不含塔
+  // 「全部」= 普通卡 + 塔防（塔防卡点一下即设为当前卡组的塔）
 
   if(FILTERS.air && !c.air) return false;
   if(FILTERS.siege && !c.siege) return false;
