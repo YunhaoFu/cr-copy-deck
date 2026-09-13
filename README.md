@@ -99,7 +99,7 @@ clashroyale://copyDeck?deck=27000002;26000023;...;28000015&l=Royals&tt=159000000
 - **和「我的卡组」完全同一格式**，直接排在同一个列表里；**每套都有「编辑 / 删除」**：
   - 编辑内置卡组 → 保存后会变成你自己的卡组（原内置自动隐藏）；
   - 删除内置卡组 → 从列表移除（可在「⚙ 设置 → 恢复内置卡组」找回）。
-- **卡片布局**：左边一列先是**塔防**，下面是这个卡组的**攻城卡**（有多张就都显示）；右边是 8 张卡——一眼能看出这是什么卡组。
+- **卡片布局**：最左边是**塔防**，右边 8 张卡；卡组**名字后面**用一排小图标显示这个卡组的**核心卡**（横排，多个就多个）。
 - 不再显示平均费用。
 - 觉醒 / 精英已按位置放好并写入 `slots=`；塔防写 `tt=`。
 
@@ -107,8 +107,11 @@ clashroyale://copyDeck?deck=27000002;26000023;...;28000015&l=Royals&tt=159000000
 
 卡组列表上方有两排筛选（可叠加）：
 
-- **核心**：Minion Giant / Giant / Battle Ram / Hog Rider / P.E.K.K.A / Miner / Mega Knight / Ice Golem / Sparky / Graveyard / Wall Breakers / Royal Hogs / Goblin Barrel / Skeleton Barrel
-- **法术**：Zap / Barbarian Barrel / Fireball / Arrows / The Log / Tornado / Lightning / Freeze / Rage / Graveyard / Goblin Barrel / Giant Snowball
+- **核心**（= 无视部队直接打到塔的卡）：Miner（矿工）、Mortar（迫击炮）、X-Bow（X弩）、Goblin Drill（钻机）、Goblin Barrel（飞桶）、Graveyard（墓园）
+- **法术**：Zap / Barbarian Barrel / Fireball / Arrows / The Log / Tornado / Lightning / Freeze / Rage / Giant Snowball
+
+> 注意：核心 ≠ "目标为建筑的部队"。巨人、野猪、Goblin Demolisher 这类虽然只打建筑，但会被部队拦下，不是核心；
+> Mega Knight / Sparky 这类也不是核心。卡池筛选里的「核心」也是同一套 6 张。
 
 每枚标签**点一下 = 只看有它的卡组（✓）**，**再点 = 只看没有它的卡组（✗）**，**第三下取消**；多个标签可叠加，右侧有「清除筛选」。
 
