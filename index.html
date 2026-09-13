@@ -505,6 +505,14 @@ function sanitizeVariant(slotIndex, cardId, v){
   if(v === "hero" && !(c && c.hero)) return "";        // 卡本身没有精英形态
   return v;
 }
+function defaultVariant(slotIndex, cardId){
+  const c = byId.get(cardId);
+  if(!c || c.champ) return "";                       // 英雄卡固有，不用标记
+  const rule = settings.rules[slotIndex] || {};
+  if(c.evo && rule.evo) return "evo";                // 觉醒位 -> 自动紫星（觉醒）
+  if(c.hero && rule.hero) return "hero";             // 精英位 -> 自动橙星（精英）
+  return "";                                         // 否则普通（银星）
+}
 function slotAccepts(slotIndex, cardId){
   const c = byId.get(cardId);
   if(c && c.champ) return !!((settings.rules[slotIndex] || {}).champ);   // 英雄卡只能放英雄位
@@ -842,12 +850,12 @@ function renderChips(){
     chip("type:1", "部队", "", FILTERS.type === 1),
     chip("type:2", "法术", "", FILTERS.type === 2),
     chip("type:3", "建筑", "", FILTERS.type === 3),
-    chip("air", "空中单位", "☁", FILTERS.air),
-    chip("siege", "攻城", "⌂", FILTERS.siege),
-    chip("back", "后排", "◎", FILTERS.back),
-    chip("evo", "觉醒", "★", FILTERS.evo),
-    chip("hero", "精英", "★", FILTERS.hero),
-    chip("champ", "英雄", "★", FILTERS.champ),
+    chip("air", "空中单位", "", FILTERS.air),
+    chip("siege", "攻城", "", FILTERS.siege),
+    chip("back", "后排", "", FILTERS.back),
+    chip("evo", "觉醒", "", FILTERS.evo),
+    chip("hero", "精英", "", FILTERS.hero),
+    chip("champ", "英雄", "", FILTERS.champ),
   ];
   $("#eChips").innerHTML = chips.join("");
 }
@@ -862,8 +870,9 @@ function moveSlot(i, dir){
     toast(`⛔ 无法移动：${card ? card.name : "该卡"} 只能放在第 ${allowedPositions("champ").join("、")} 格`);
     return;
   }
-  selection[i] = selection[j];
-  selection[j] = a;
+  const b = selection[j];
+  selection[i] = b ? { id: b.id, v: defaultVariant(i, b.id) } : null;
+  selection[j] = { id: a.id, v: defaultVariant(j, a.id) };
   revalidateSelection();
   renderPicker();
 }
@@ -891,9 +900,11 @@ function toggleCard(id){
     toast(cannotJoinMsg(id));
     return;
   }
-  selection[target] = { id, v: "" };
+  selection[target] = { id, v: defaultVariant(target, id) };
   const card = byId.get(id);
   if(card && card.champ) toast(`「${card.name}」已放入第 ${target+1} 格（英雄位）`);
+  else if(card && selection[target].v)
+    toast(`「${card.name}」已按位置设为${VARIANTS[selection[target].v].label}`);
   activeSlot = -1;
   revalidateSelection(); renderPicker();
 }
@@ -905,7 +916,7 @@ function fillSelection(ids){
   for(const id of ids){
     const slot = firstFreeSlotFor(id);
     if(slot < 0){ failed.push(id); continue; }
-    selection[slot] = { id, v: "" };
+    selection[slot] = { id, v: defaultVariant(slot, id) };
   }
   revalidateSelection(); renderPicker();
   if(failed.length) toast("⛔ 无法加入：" + failed.map(id => (byId.get(id) || {}).name || ("#" + id)).join("、"));
