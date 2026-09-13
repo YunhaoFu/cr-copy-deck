@@ -550,7 +550,10 @@ function allowedPositionsText(key){
 function rulesSummary(){
   const out = [];
   settings.rules.forEach((r, i) => {
-    const forms = ["", ...["evo","hero","champ"].filter(k => r[k])];
+    const forms = [];
+    if(r.evo) forms.push("evo");
+    if(r.hero || r.champ) forms.push("hero");      // 精英/英雄同为橙星，只算一个
+    forms.push("");                                 // 银星（普通）永远最后
     const key = forms.join("+");
     const last = out[out.length - 1];
     if(last && last.key === key && last.end === i) last.end = i + 1;
