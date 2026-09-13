@@ -769,13 +769,9 @@ function renderPicker(){
     } else if(!(card && (card.evo || card.hero))){
       stars = starHtml("", true, undefined, "该卡没有觉醒 / 精英形态，只能是普通卡");
     } else {
-      const mk = (key, label) => {
-        const ok = !!rule[key];
-        const title = ok ? label : `${label}：${allowedPositionsText(key)}`;
-        return starHtml(key, cur === key, !ok, title);
-      };
-      stars = (card.evo ? mk("evo", "觉醒") : "") +
-        (card.hero ? mk("hero", "精英") : "") +
+      const mk = (key, label) => starHtml(key, cur === key, false, label);
+      stars = (card.evo && rule.evo ? mk("evo", "觉醒") : "") +
+        (card.hero && rule.hero ? mk("hero", "精英") : "") +
         starHtml("", cur === "", false);
     }
     return `<div class="s ${i === activeSlot ? "active" : ""}" data-i="${i}">
@@ -805,7 +801,7 @@ function renderPicker(){
   $("#eHint").innerHTML = count < 8
     ? `还差 ${8 - count} 张卡。点卡片加入（放不了会直接提示「无法加入」）；先点某个空格可以指定放哪一格。<br>
        <span class="star silver">★</span> 普通（每格都能放）　<span class="star purple">★</span> 觉醒（第 1、3 格）　<span class="star orange">★</span> 精英 / 英雄（第 2、3 格）`
-    : `8 张已满。点格子里的星标可以切换形态：<span class="star silver">★</span> 普通　<span class="star purple">★</span> 觉醒　<span class="star orange">★</span> 精英　（不能选的星标是灰的）`;
+    : `8 张已满。点格子里的星标可切换形态；每个格子只显示该格能用的形态。`;
 }
 
 const FILTERS = { type: 0, air: false, siege: false, back: false, evo: false, hero: false, champ: false };
@@ -844,11 +840,11 @@ function renderChips(){
     chip("type:2", "法术", "", FILTERS.type === 2),
     chip("type:3", "建筑", "", FILTERS.type === 3),
     chip("air", "空中单位", "☁", FILTERS.air),
-    chip("siege", "攻城（只打建筑）", "⌂", FILTERS.siege),
-    chip("back", "后排 / 远程支援", "◎", FILTERS.back),
-    chip("evo", "可觉醒", "★", FILTERS.evo),
-    chip("hero", "可精英", "★", FILTERS.hero),
-    chip("champ", "英雄卡", "★", FILTERS.champ),
+    chip("siege", "攻城", "⌂", FILTERS.siege),
+    chip("back", "后排", "◎", FILTERS.back),
+    chip("evo", "觉醒", "★", FILTERS.evo),
+    chip("hero", "精英", "★", FILTERS.hero),
+    chip("champ", "英雄", "★", FILTERS.champ),
   ];
   $("#eChips").innerHTML = chips.join("");
 }
