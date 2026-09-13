@@ -25,15 +25,31 @@
   .ghostbtn{background:var(--panel-2);border:1px solid var(--line);color:var(--text);border-radius:10px;
         padding:7px 12px;font-size:13px;cursor:pointer}
   .ghostbtn:hover{border-color:var(--gold)}
-  .dfilter{margin:0 0 12px;display:flex;flex-direction:column;gap:6px}
-  .dfilter .drow{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-  .dfilter .dlabel{color:var(--muted);font-size:11px;width:28px;flex:0 0 auto}
-  .dfilter .chip{background:var(--panel-2);border:1px solid var(--line);color:#c3cdf0;border-radius:999px;
-        padding:3px 10px;font-size:11px;cursor:pointer;user-select:none}
-  .dfilter .chip.on{background:rgba(47,191,107,.18);border-color:var(--green);color:#a9f0c6}
-  .dfilter .chip.on::before{content:"✓ "}
-  .dfilter .chip.ex{background:rgba(224,75,90,.18);border-color:var(--red);color:#ffb9c0;text-decoration:line-through}
-  .dfilter .chip.ex::before{content:"✗ "}
+  .fpanel{margin:0 0 14px;background:linear-gradient(180deg,rgba(29,39,82,.6),rgba(21,28,64,.35));
+        border:1px solid var(--line);border-radius:14px;padding:10px 12px 8px}
+  .fhead{display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap}
+  .fhead .ftitle{font-size:12px;font-weight:700;color:#dfe6ff;letter-spacing:.6px}
+  .fhead .fhint{font-size:11px;color:#6f7cab}
+  .fhead .fcount{font-size:11px;color:#ffd479;margin-left:auto}
+  .fhead .fclear{background:rgba(224,75,90,.14);border:1px solid rgba(224,75,90,.5);color:#ffb9c0;
+        border-radius:999px;padding:3px 12px;font-size:11px;cursor:pointer}
+  .fhead .fclear:hover{background:rgba(224,75,90,.24)}
+  .frow{display:flex;align-items:flex-start;gap:10px;padding:6px 0}
+  .frow + .frow{border-top:1px dashed rgba(44,58,112,.55)}
+  .frow .flabel{flex:0 0 auto;width:30px;font-size:11px;color:#8f9cc9;padding-top:4px;letter-spacing:.5px}
+  .fchips{display:flex;flex-wrap:wrap;gap:5px}
+  .chip{display:inline-flex;align-items:center;gap:5px;background:rgba(10,14,38,.55);
+        border:1px solid rgba(44,58,112,.95);color:#c3cdf0;border-radius:999px;
+        padding:2px 9px 2px 3px;font-size:11px;line-height:18px;cursor:pointer;user-select:none;
+        transition:border-color .15s,background .15s,color .15s}
+  .chip img{width:16px;height:20px;object-fit:contain;border-radius:3px;background:#0a0e26;display:block}
+  .chip:hover{border-color:var(--gold);color:#fff}
+  .chip.on{background:rgba(47,191,107,.15);border-color:rgba(47,191,107,.7);color:#d8ffe8}
+  .chip.on::after{content:"✓";font-size:10px;color:#7ff0b0;font-weight:700}
+  .chip.ex{background:rgba(224,75,90,.10);border-color:rgba(224,75,90,.55);color:#9098b2}
+  .chip.ex img{filter:grayscale(1) brightness(.55)}
+  .chip.ex .cn{text-decoration:line-through;text-decoration-color:rgba(255,155,166,.6)}
+  .chip.ex::after{content:"／";font-size:11px;color:#ff9aa6;font-weight:700}
   .leftcol{display:flex;flex-direction:column;gap:6px;width:46px;flex:0 0 auto}
   .title-cores{display:inline-flex;gap:2px;margin-left:6px;vertical-align:-4px}
   .title-cores .t{width:18px;position:relative}
@@ -178,10 +194,15 @@
     <button id="addBtn" class="ghostbtn">＋ 添加卡组</button>
     <button id="settingsBtn" class="ghostbtn">⚙ 设置</button>
   </div>
-  <div class="dfilter">
-    <div class="drow"><span class="dlabel">核心</span><span id="fCores"></span></div>
-    <div class="drow"><span class="dlabel">法术</span><span id="fSpells"></span>
-      <span class="ghostbtn" id="fClear" style="margin-left:auto;display:none">清除筛选</span></div>
+  <div class="fpanel">
+    <div class="fhead">
+      <span class="ftitle">筛选卡组</span>
+      <span class="fhint">点一下：只看有它 ｜ 再点：只看没有它 ｜ 第三下取消</span>
+      <span class="fcount" id="fCount"></span>
+      <button class="fclear" id="fClear" style="display:none">清除</button>
+    </div>
+    <div class="frow"><span class="flabel">核心</span><span class="fchips" id="fCores"></span></div>
+    <div class="frow"><span class="flabel">法术</span><span class="fchips" id="fSpells"></span></div>
   </div>
   <div id="decks" class="decks"></div>
 
@@ -831,15 +852,19 @@ function deckMatchFilter(deck){
   return true;
 }
 function renderDeckFilter(){
-  const mk = (pid, list) => list.map(id => {
+  const chip = id => {
     const m = DPICK[id] || 0;
-    const cls = m === 1 ? "on" : m === -1 ? "ex" : "";
     const c = byId.get(id);
-    return `<span class="chip ${cls}" data-pid="${id}" title="点一下：只看有它 ｜ 再点：只看没有它 ｜ 再点：取消">${escapeHtml(c ? c.name : id)}</span>`;
-  }).join("");
-  $("#fCores").innerHTML = mk("cores", META_CORES);
-  $("#fSpells").innerHTML = mk("spells", META_SPELLS);
-  $("#fClear").style.display = Object.keys(DPICK).length ? "" : "none";
+    const nm = c ? c.name : String(id);
+    const state = m === 1 ? "只看有它（点击切换为“只看没有”）" : m === -1 ? "只看没有它（点击取消）" : "点击：只看有它";
+    return `<span class="chip ${m === 1 ? "on" : m === -1 ? "ex" : ""}" data-pid="${id}" title="${escapeHtml(nm)}：${state}">
+      <img loading="lazy" src="${imgOf(c)}" alt=""><span class="cn">${escapeHtml(nm)}</span></span>`;
+  };
+  $("#fCores").innerHTML = META_CORES.map(chip).join("");
+  $("#fSpells").innerHTML = META_SPELLS.map(chip).join("");
+  const n = Object.keys(DPICK).length;
+  $("#fCount").textContent = n ? `已选 ${n} 项筛选` : "";
+  $("#fClear").style.display = n ? "" : "none";
 }
 
 function render(){
