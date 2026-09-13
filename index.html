@@ -86,7 +86,17 @@
   .picker .grid .c .ck{position:absolute;top:2px;right:2px;background:var(--gold);color:#241a00;border-radius:50%;
         width:16px;height:16px;font-size:11px;line-height:16px;text-align:center;font-weight:800}
   .picker .grid .c .cn{font-size:9px;color:#aab6e6;text-align:center;padding:1px 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .selwrap{display:flex;gap:12px;align-items:flex-start}
   .selrow{display:grid;grid-template-columns:repeat(4,84px);gap:8px;align-items:start;padding:2px}
+  .towerslot{width:104px;flex:0 0 auto;border:1px solid var(--line);border-radius:9px;padding:5px;background:rgba(62,199,255,.06)}
+  .towerslot .tslabel{font-size:10px;color:#9fe0ff;text-align:center;margin-bottom:4px}
+  .towerslot .t{position:relative}
+  .towerslot img{width:100%;border-radius:6px;background:#0a0e26;display:block}
+  .towerslot select{width:100%;margin-top:4px;background:var(--panel-2);color:var(--text);border:1px solid var(--line);
+        border-radius:6px;font-size:10px;padding:1px 2px;cursor:pointer}
+  .tilecards{display:flex;gap:8px;align-items:flex-start}
+  .tower-mini{width:44px;flex:0 0 auto;padding-left:8px;border-left:1px solid var(--line)}
+  .tower-mini img{width:100%;border-radius:5px;background:#0a0e26;display:block}
   .selrow .s{position:relative;border:1px solid var(--line);border-radius:9px;padding:4px;background:rgba(255,255,255,.02)}
   .selrow .s img{width:100%;border-radius:6px;background:#0a0e26;display:block}
   .selrow .s .idx{position:absolute;left:8px;top:8px;font-size:9px;color:#cfd7ff;background:rgba(0,0,0,.6);border-radius:4px;padding:0 4px;z-index:2}
@@ -167,6 +177,7 @@
   <div class="dlg-head"><h3 id="dTitle">卡组</h3><button class="close" data-close="detail">×</button></div>
   <div class="dlg-body">
     <div id="dCards" class="cards8"></div>
+    <div id="dTower" class="note"></div>
     <div id="dVariants" class="note"></div>
     <div class="actions">
       <a id="openBtn" class="btn primary" href="#">在手机上导入</a>
@@ -197,7 +208,10 @@
 
     <label>选择 8 张卡（<span id="eCount">0</span>/8）· 点已选卡可设置形态</label>
     <div class="picker">
-      <div class="selrow" id="eSel"></div>
+      <div class="selwrap">
+        <div class="selrow" id="eSel"></div>
+        <div class="towerslot" id="eTower"></div>
+      </div>
       <div class="ruleline" id="eRules"></div>
       <div class="fbar">
         <input type="text" id="eSearch" placeholder="搜索卡牌名（英文）…">
@@ -230,7 +244,7 @@
       <h4>链接参数</h4>
       <div class="f2">
         <div><label>卡组标签 l</label><input type="text" id="sLabel"></div>
-        <div><label>tt 参数</label><input type="text" id="sTt"></div>
+        <div><label>默认塔防（tt）</label><input type="text" id="sTt" title="新卡组默认使用的塔楼部队 ID（159000000 公主塔）"></div>
       </div>
       <div class="hint">默认沿用官方 / RoyaleAPI 的写法（l=Royals、tt=159000000），一般无需修改。</div>
     </div>
@@ -406,7 +420,11 @@ const CARDS = [
   {"id": 28000023, "name": "Void", "cost": 5, "slug": "void", "h": "BykyeWDqzn4PlHSszu3NbrXT1mHxW2EA8vHbQGR5LDE", "evo": 0, "hero": 0, "champ": 0, "rar": "epic", "t": 2, "air": 0, "siege": 0, "back": 0},
   {"id": 28000024, "name": "Goblin Curse", "cost": 2, "slug": "goblin-curse", "h": "OQPfGgT5mHEUvPuKKt0plZT0PNtIjCqUgQ3Rm86dQ2k", "evo": 0, "hero": 0, "champ": 0, "rar": "epic", "t": 2, "air": 0, "siege": 0, "back": 0},
   {"id": 28000025, "name": "Spirit Empress", "cost": 6, "slug": "spirit-empress", "h": "MWWBZqiQeRBXSqEITVMj46nO_uCIUsqBidvUw9K2twY", "evo": 0, "hero": 0, "champ": 0, "rar": "legendary", "t": 1, "air": 0, "siege": 0, "back": 1},
-  {"id": 28000026, "name": "Vines", "cost": 3, "slug": "vines", "h": "V5sJlPuo2WBRtirJ1lGEPJA4NvQ0KPwFeMrpxLX5z_8", "evo": 0, "hero": 0, "champ": 0, "rar": "epic", "t": 2, "air": 0, "siege": 0, "back": 0}
+  {"id": 28000026, "name": "Vines", "cost": 3, "slug": "vines", "h": "V5sJlPuo2WBRtirJ1lGEPJA4NvQ0KPwFeMrpxLX5z_8", "evo": 0, "hero": 0, "champ": 0, "rar": "epic", "t": 2, "air": 0, "siege": 0, "back": 0},
+  {"id": 159000000, "name": "Tower Princess", "cost": null, "slug": "tower-princess", "h": "Nzo5Gjbh7NG6O3Hyu7ev54Pu5zK7vDMR2fbpGdVsS64", "evo": 0, "hero": 0, "champ": 0, "rar": "common", "t": 4, "air": 0, "siege": 0, "back": 0, "tower": 1},
+  {"id": 159000001, "name": "Cannoneer", "cost": null, "slug": "cannoneer", "h": "cUfU4UowRdbIiRvxv0ns4ezQUNndJTy7D2q4I_K_fzg", "evo": 0, "hero": 0, "champ": 0, "rar": "epic", "t": 4, "air": 0, "siege": 0, "back": 0, "tower": 1},
+  {"id": 159000002, "name": "Dagger Duchess", "cost": null, "slug": "dagger-duchess", "h": "MVj028nMLCmBuP3HlV503uxVAxFg7jyliJVZ5JYJ1h8", "evo": 0, "hero": 0, "champ": 0, "rar": "legendary", "t": 4, "air": 0, "siege": 0, "back": 0, "tower": 1},
+  {"id": 159000004, "name": "Royal Chef", "cost": null, "slug": "royal-chef", "h": "CLxP2o0iX7q9peMkekI8Ki4DgWixra8L5aUbiAeBU9U", "evo": 0, "hero": 0, "champ": 0, "rar": "legendary", "t": 4, "air": 0, "siege": 0, "back": 0, "tower": 1}
 ];
 
 const CDN = "https://api-assets.clashroyale.com";
@@ -434,6 +452,7 @@ const DEFAULT_SETTINGS = {
   codes: { evo: "1", hero: "" },
   rules: DEFAULT_RULES.map(r => ({ ...r })),
 };
+const DEFAULT_TOWER = 159000000;                 // 公主塔（链接里的 tt 默认值）
 const SEED_DECKS = [
   { name: "示例 · 迫击炮", cards: [27000002,26000023,26000022,26000107,26000054,28000000,26000053,28000015] },
   { name: "示例 · 幽灵战车", cards: [26000036,26000023,26000050,26000020,28000025,26000083,28000000,28000015] },
@@ -578,7 +597,9 @@ function normDeck(d){
   });
   cards = repairDeckCards(cards);                                  // 英雄卡自动挪到第 2/3 格
   cards = cards.map((c, i) => ({ id: c.id, v: sanitizeVariant(i, c.id, c.v) }));
-  return { name: d.name || "未命名卡组", cards };
+  const t = Number(d.tower);
+  const tower = (byId.has(t) && byId.get(t).tower) ? t : DEFAULT_TOWER;
+  return { name: d.name || "未命名卡组", cards, tower };
 }
 function loadDecks(){
   repairNotes = [];
@@ -614,6 +635,9 @@ function codeOf(v){
   const c = String(settings.codes[v] ?? "").trim();
   return c === "" ? null : c;
 }
+const TOWER_LIST = () => CARDS.filter(c => c.tower);
+const isTowerCard = id => !!(byId.get(id) && byId.get(id).tower);
+
 function buildDeckQuery(deck){
   const ids = deck.cards.map(c => c.id);
   let q = ids.join(";");
@@ -622,7 +646,7 @@ function buildDeckQuery(deck){
     return code === null ? "0" : code;
   });
   if(settings.emitSlots && slots.some(s => s !== "0")) q += "&slots=" + slots.join(";");
-  q += `&l=${encodeURIComponent(settings.label)}&tt=${encodeURIComponent(settings.tt)}`;
+  q += `&l=${encodeURIComponent(settings.label)}&tt=${deck.tower || DEFAULT_TOWER}`;   // tt = 塔楼部队 ID
   return q;
 }
 const webLink  = deck => WEB_BASE  + buildDeckQuery(deck);
@@ -648,7 +672,10 @@ function render(){
     el.className = "deck";
     el.innerHTML = `
       <div class="title">${escapeHtml(deck.name)} <span class="avg">平均 ${avgElixir(deck.cards)} 费</span></div>
-      <div class="thumbs">${deck.cards.map((c, i) => thumbHtml(c.id, effectiveVariant(i, c.id, c.v))).join("")}</div>
+      <div class="tilecards">
+        <div class="thumbs">${deck.cards.map((c, i) => thumbHtml(c.id, effectiveVariant(i, c.id, c.v))).join("")}</div>
+        ${deck.tower ? `<div class="tower-mini" title="塔防：${escapeHtml((byId.get(deck.tower) || {}).name || "")}">${thumbHtml(deck.tower, "")}</div>` : ""}
+      </div>
       ${deckWarnings(deck).length ? `<div class="warnline">⛔ ${escapeHtml(deckWarnings(deck)[0])}</div>` : ""}
       <div class="ops">
         <button class="opbtn edit" data-i="${i}">编辑</button>
@@ -682,6 +709,10 @@ function openDetail(deck){
       <div class="nm">${card ? escapeHtml(card.name) : "未知卡牌 #" + c.id}</div>
       ${card ? `<div class="cost">${typeof card.cost === "number" ? card.cost : "?"} 费${v}</div>` : ""}</div>`;
   }).join("");
+  const tw = byId.get(deck.tower || DEFAULT_TOWER);
+  $("#dTower").innerHTML = tw
+    ? `塔防：<img src="${imgOf(tw)}" alt="" style="width:22px;border-radius:4px;vertical-align:-6px;margin-right:4px">${escapeHtml(tw.name)}（tt=${tw.id}）`
+    : "";
   const vs = variantSummary(deck);
   const written = settings.emitSlots && deck.cards.some((c, i) => codeOf(sanitizeVariant(i, c.id, c.v)) !== null);
   $("#dVariants").innerHTML = vs.length
@@ -718,6 +749,7 @@ function toast(msg){
 let editingIndex = -1;
 let selection = new Array(8).fill(null);   // 8 个格子，null = 空
 let activeSlot = -1;                       // 点选的空格（用来指定把卡放进哪一格）
+let currentTower = 159000000;              // 当前塔楼部队（写入链接的 tt）
 
 const isChampId = id => { const c = byId.get(id); return !!(c && c.champ); };
 const canPlace = (slotIndex, cardId) => slotAccepts(slotIndex, cardId);
@@ -748,12 +780,24 @@ function openEditor(deck){
   selection = new Array(8).fill(null);
   if(deck) deck.cards.slice(0, 8).forEach((c, i) => { selection[i] = { id: c.id, v: c.v || "" }; });
   activeSlot = -1;
+  currentTower = (deck && deck.tower) ? deck.tower : (Number(settings.tt) || DEFAULT_TOWER);
   $("#eTitle").textContent = deck ? "编辑卡组" : "添加卡组";
   $("#eName").value = deck ? deck.name : "";
   $("#ePaste").value = "";
   $("#eSearch").value = "";
   renderPicker();
   $("#editor").showModal();
+}
+
+function renderTowerSlot(){
+  const el = $("#eTower");
+  if(!el) return;
+  const cur = byId.get(currentTower) || byId.get(DEFAULT_TOWER);
+  const opts = TOWER_LIST().map(t =>
+    `<option value="${t.id}" ${t.id === currentTower ? "selected" : ""}>${escapeHtml(t.name)}</option>`).join("");
+  el.innerHTML = `<div class="tslabel">塔防（tt=）</div>
+    <div class="t" title="${escapeHtml(cur ? cur.name : "")}">${cur ? `<img loading="lazy" src="${imgOf(cur)}" alt="${escapeHtml(cur.name)}">` : ""}</div>
+    <select id="eTowerSel" title="选择塔楼部队">${opts}</select>`;
 }
 
 function renderPicker(){
@@ -795,6 +839,7 @@ function renderPicker(){
       </div>
     </div>`;
   }).join("");
+  renderTowerSlot();
   $("#eRules").innerHTML = selection.some(Boolean) ? rulesSummary() : "";
 
   renderChips();
@@ -819,7 +864,10 @@ const FILTERS = { type: 0, air: false, siege: false, back: false, evo: false, he
 let sortMode = "id";
 const TYPE_NAME = { 1: "部队", 2: "法术", 3: "建筑" };
 function matchFilter(c){
-  if(FILTERS.type && c.t !== FILTERS.type) return false;
+  if(FILTERS.type === 4){ if(!c.tower) return false; }       // 塔防：只看塔楼部队
+  else if(FILTERS.type){ if(c.tower || c.t !== FILTERS.type) return false; }
+  else if(c.tower) return false;                             // 全部：不含塔
+
   if(FILTERS.air && !c.air) return false;
   if(FILTERS.siege && !c.siege) return false;
   if(FILTERS.back && !c.back) return false;
@@ -850,6 +898,7 @@ function renderChips(){
     chip("type:1", "部队", "", FILTERS.type === 1),
     chip("type:2", "法术", "", FILTERS.type === 2),
     chip("type:3", "建筑", "", FILTERS.type === 3),
+    chip("type:4", "塔防", "", FILTERS.type === 4),
     chip("air", "空中单位", "", FILTERS.air),
     chip("siege", "攻城", "", FILTERS.siege),
     chip("back", "后排", "", FILTERS.back),
@@ -889,6 +938,12 @@ function revalidateSelection(){
 }
 
 function toggleCard(id){
+  if(isTowerCard(id)){                       // 塔楼部队：设置到右侧塔防槽
+    currentTower = id;
+    renderPicker();
+    toast(`塔防已设为「${(byId.get(id) || {}).name || id}」`);
+    return;
+  }
   const idx = selection.findIndex(s => s && s.id === id);
   if(idx >= 0){                                    // 再点一次 = 移除
     selection[idx] = null;
@@ -909,9 +964,15 @@ function toggleCard(id){
   revalidateSelection(); renderPicker();
 }
 
-function fillSelection(ids){
+function parseTowerText(text){
+  const m = text.match(/tt=(\d{6,})/i);
+  const id = m && Number(m[1]);
+  return (byId.has(id) && byId.get(id).tower) ? id : null;
+}
+function fillSelection(ids, towerId){
   selection = new Array(8).fill(null);
   activeSlot = -1;
+  if(towerId) currentTower = towerId;
   const failed = [];
   for(const id of ids){
     const slot = firstFreeSlotFor(id);
@@ -931,7 +992,7 @@ function parseDeckText(text){
   for(const tok of src.split(/[^\d]+/)){
     if(/^\d{6,}$/.test(tok)){
       const id = Number(tok);
-      if(byId.has(id) && !out.includes(id)) out.push(id);
+      if(byId.has(id) && !byId.get(id).tower && !out.includes(id)) out.push(id);
     }
     if(out.length === 8) break;
   }
@@ -1011,6 +1072,12 @@ document.addEventListener("click", e => {
   renderPicker();
 });
 $("#eSearch").addEventListener("input", renderPicker);
+$("#eTower").addEventListener("change", e => {
+  const sel = e.target.closest("#eTowerSel");
+  if(!sel) return;
+  currentTower = Number(sel.value) || DEFAULT_TOWER;
+  renderTowerSlot();
+});
 $("#eSort").addEventListener("change", e => { sortMode = e.target.value; renderPicker(); });
 $("#eChips").addEventListener("click", e => {
   const chip = e.target.closest(".chip");
@@ -1022,18 +1089,18 @@ $("#eChips").addEventListener("click", e => {
 });
 $("#ePaste").addEventListener("input", () => {
   const ids = parseDeckText($("#ePaste").value);
-  if(ids.length) fillSelection(ids);
+  if(ids.length) fillSelection(ids, parseTowerText($("#ePaste").value));
 });
 $("#eParse").addEventListener("click", () => {
   const ids = parseDeckText($("#ePaste").value);
   if(!ids.length){ toast("没解析出卡牌，请检查内容"); return; }
-  fillSelection(ids);
+  fillSelection(ids, parseTowerText($("#ePaste").value));
 });
 $("#eSave").addEventListener("click", () => {
   const name = $("#eName").value.trim() || ("卡组 " + (decks.length + 1));
   const filled = selection.filter(Boolean);
   if(filled.length !== 8){ toast(`还差 ${8 - filled.length} 张卡，请选满 8 张`); return; }
-  const deck = normDeck({ name, cards: selection.map(c => ({ id: c.id, v: c.v })) });
+  const deck = normDeck({ name, cards: selection.map(c => ({ id: c.id, v: c.v })), tower: currentTower });
   if(editingIndex >= 0) decks[editingIndex] = deck; else decks.push(deck);
   saveDecks(decks); render(); $("#editor").close(); toast("已保存");
 });
