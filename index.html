@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>皇室战争 · 卡组一键导入</title>
+<style>
+  :root{
+    --bg:#0d1230; --panel:#151c40; --panel-2:#1d2752; --line:#2c3a70;
+    --text:#eef1ff; --muted:#93a0cf; --gold:#f5b93c; --blue:#3d7bff; --green:#2fbf6b; --red:#e04b5a;
+    --evo:#a855f7; --hero:#f0b429; --elite:#ff9d2e; --champ:#ff9d2e;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(180deg,#0a0e26,#0d1230 40%,#0a0e26);color:var(--text);
+       font:15px/1.5 system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+  a{color:var(--gold)}
+  .wrap{max-width:1000px;margin:0 auto;padding:18px 14px 60px}
+  header h1{font-size:20px;margin:0 0 4px}
+  header p{margin:0;color:var(--muted);font-size:13px}
+  .hintbox{margin-top:14px;background:rgba(61,123,255,.10);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:13px;color:#cdd6ff}
+  .hintbox b{color:#fff}
+  .rowhead{display:flex;align-items:center;gap:10px;margin:26px 0 10px}
+  .rowhead h2{font-size:15px;color:var(--muted);margin:0;font-weight:600;letter-spacing:.5px}
+  .rowhead .sp{margin-left:auto}
+  .ghostbtn{background:var(--panel-2);border:1px solid var(--line);color:var(--text);border-radius:10px;
+        padding:7px 12px;font-size:13px;cursor:pointer}
+  .ghostbtn:hover{border-color:var(--gold)}
+  .decks{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+  .deck{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;cursor:pointer;
+        transition:.15s;position:relative}
+  .deck:hover{border-color:var(--gold);transform:translateY(-2px)}
+  .deck .title{display:flex;align-items:baseline;gap:8px;margin:0 0 10px;font-weight:700;font-size:14px;padding-right:104px}
+  .deck .title .avg{margin-left:auto;color:var(--muted);font-weight:400;font-size:12px}
+  .thumbs{display:grid;grid-template-columns:repeat(8,1fr);gap:4px}
+  .t{position:relative}
+  .t img{width:100%;aspect-ratio:3/4;object-fit:contain;background:#0a0e26;border-radius:5px;display:block}
+  .t.evo img{box-shadow:0 0 0 2px var(--evo)}
+  .t.hero img{box-shadow:0 0 0 2px var(--hero)}
+  .t.champ img{box-shadow:0 0 0 2px var(--champ)}
+  .vb{position:absolute;left:-3px;top:-3px;width:15px;height:15px;border-radius:50%;font-size:9px;line-height:15px;
+      text-align:center;font-weight:800;color:#fff;border:1px solid rgba(0,0,0,.4);z-index:2}
+  .vb.evo{background:var(--evo)} .vb.hero{background:var(--hero);color:#2b1c00} .vb.champ{background:var(--champ);color:#04202e}
+  .warnline{margin-top:6px;font-size:11px;color:#ffb9c0}
+  .deck .ops{position:absolute;top:8px;right:8px;display:flex;gap:6px;z-index:3}
+  .opbtn{border:0;border-radius:8px;padding:3px 8px;font-size:12px;cursor:pointer;background:var(--panel-2);color:var(--text)}
+  .opbtn.del{background:rgba(224,75,90,.2);color:#ffb9c0}
+  .addbtn{margin-top:16px;background:var(--panel-2);border:1px dashed var(--line);color:var(--text);
+          padding:12px;border-radius:12px;width:100%;font-size:14px;cursor:pointer}
+  .addbtn:hover{border-color:var(--gold)}
+  dialog{border:1px solid var(--line);border-radius:16px;background:var(--panel);color:var(--text);
+         padding:0;max-width:720px;width:calc(100% - 24px)}
+  dialog::backdrop{background:rgba(3,6,20,.72)}
+  .dlg-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line)}
+  .dlg-head h3{margin:0;font-size:16px}
+  .dlg-head .close{margin-left:auto;background:none;border:0;color:var(--muted);font-size:20px;cursor:pointer}
+  .dlg-body{padding:16px;max-height:72vh;overflow:auto}
+  .cards8{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .cards8 .c{background:#0a0e26;border-radius:10px;padding:6px;text-align:center;position:relative}
+  .cards8 img{width:100%;aspect-ratio:3/4;object-fit:contain}
+  .cards8 .nm{font-size:11px;color:#cfd7ff;margin-top:4px;line-height:1.25}
+  .cards8 .cost{display:inline-block;background:#2a1450;color:#e6a6ff;font-size:10px;border-radius:8px;padding:0 6px;margin-top:3px}
+  .cards8 .c .vb{left:2px;top:2px}
+  .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+  .btn{border:0;border-radius:11px;padding:11px 16px;font-size:14px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+  .btn.primary{background:var(--green);color:#04170c}
+  .btn.blue{background:var(--blue);color:#fff}
+  .btn.ghost{background:var(--panel-2);color:var(--text)}
+  .btn.sm{padding:8px 12px;font-size:13px}
+  .qrrow{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start;margin-top:16px}
+  .qrbox{background:#fff;border-radius:12px;padding:10px}
+  .qrbox canvas,.qrbox img{display:block}
+  .qrhint{font-size:12px;color:var(--muted);max-width:280px}
+  .linkbox{margin-top:12px;font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;background:#0a0e26;border:1px solid var(--line);
+           border-radius:10px;padding:10px;word-break:break-all;color:#bcd0ff;user-select:all}
+  .note{margin-top:14px;font-size:12px;color:var(--muted)}
+  .note b{color:#ffd479}
+  .editor label,.settings label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
+  .editor input[type=text],.editor textarea,.settings input[type=text]{width:100%;background:#0a0e26;border:1px solid var(--line);border-radius:10px;
+        color:var(--text);padding:9px 11px;font-size:14px;font-family:inherit}
+  .editor textarea{min-height:64px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}
+  .picker{margin-top:10px;border:1px solid var(--line);border-radius:12px;padding:10px;background:rgba(0,0,0,.18)}
+  .picker .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px;max-height:300px;overflow:auto;margin-top:8px}
+  .picker .grid .c{position:relative;cursor:pointer;border-radius:8px;overflow:hidden;background:#0a0e26;border:2px solid transparent}
+  .picker .grid .c img{width:100%;display:block;aspect-ratio:3/4;object-fit:contain}
+  .picker .grid .c.sel{border-color:var(--gold)}
+  .picker .grid .c .ck{position:absolute;top:2px;right:2px;background:var(--gold);color:#241a00;border-radius:50%;
+        width:16px;height:16px;font-size:11px;line-height:16px;text-align:center;font-weight:800}
+  .picker .grid .c .cn{font-size:9px;color:#aab6e6;text-align:center;padding:1px 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .selrow{display:grid;grid-template-columns:repeat(4,84px);gap:8px;align-items:start;padding:2px}
+  .selrow .s{position:relative;border:1px solid var(--line);border-radius:9px;padding:4px;background:rgba(255,255,255,.02)}
+  .selrow .s img{width:100%;border-radius:6px;background:#0a0e26;display:block}
+  .selrow .s .idx{position:absolute;left:8px;top:8px;font-size:9px;color:#cfd7ff;background:rgba(0,0,0,.6);border-radius:4px;padding:0 4px;z-index:2}
+  .selrow .s.empty{border-style:dashed;border-color:#3a4a86;cursor:pointer}
+  .selrow .s.empty.active{border-color:var(--gold);border-style:solid}
+  .selrow .s.empty .ph{display:flex;align-items:center;justify-content:center;aspect-ratio:3/4;border-radius:6px;
+        background:rgba(255,255,255,.03);color:#5a6795;font-size:20px}
+  .selrow .s .starbar{display:flex;gap:3px;margin-top:4px;justify-content:center;flex-wrap:wrap}
+  .star{font-size:13px;line-height:18px;padding:0 5px;border-radius:6px;border:1px solid var(--line);
+        background:var(--panel-2);color:#8d97b8;cursor:pointer}
+  .star.silver{color:#c9d3ea}
+  .star.purple{color:var(--evo)}
+  .star.orange{color:var(--elite)}
+  .star.on{border-color:currentColor;background:rgba(255,255,255,.09);box-shadow:0 0 7px -2px currentColor}
+  .star:disabled{opacity:.28;cursor:not-allowed;box-shadow:none}
+  span.star{cursor:default}
+  .selrow .s .mvbar{display:flex;gap:3px;margin-top:4px}
+  .selrow .s .mv{flex:1;background:var(--panel-2);border:1px solid var(--line);color:var(--text);
+        border-radius:6px;font-size:10px;line-height:15px;padding:0;cursor:pointer}
+  .selrow .s .t{cursor:pointer}
+  .fbar{display:flex;gap:8px;margin-top:8px}
+  .fbar input{flex:1}
+  .fbar select{background:var(--panel-2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:0 8px;font-size:12px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .chip{background:var(--panel-2);border:1px solid var(--line);color:#c3cdf0;border-radius:999px;
+        padding:3px 10px;font-size:11px;cursor:pointer}
+  .chip.on{background:rgba(245,185,60,.16);border-color:var(--gold);color:#ffe3a3}
+  .chip .dot{font-size:10px}
+  .selrow .empty{color:var(--muted);font-size:12px}
+  .ruleline{font-size:10px;color:var(--muted);line-height:1.6;width:100%}
+  .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#101736;border:1px solid var(--line);
+        color:var(--text);padding:10px 18px;border-radius:999px;font-size:13px;opacity:0;pointer-events:none;transition:.25s;z-index:99}
+  .toast.on{opacity:1}
+  .settings .sec{border-top:1px solid var(--line);margin-top:14px;padding-top:12px}
+  .settings .sec h4{margin:0 0 6px;font-size:13px;color:#cdd6ff}
+  .f2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .f3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .switch{display:flex;align-items:center;gap:8px;margin:8px 0;font-size:13px}
+  .switch input{width:auto}
+  table.rules{width:100%;border-collapse:collapse;font-size:12px}
+  table.rules th,table.rules td{border-bottom:1px solid rgba(44,58,112,.6);padding:5px 4px;text-align:center}
+  table.rules th{color:var(--muted);font-weight:500}
+  table.rules td.pos{color:#cdd6ff}
+  .hint{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.6}
+  footer{margin-top:36px;border-top:1px solid var(--line);padding-top:14px;font-size:12px;color:var(--muted)}
+  @media (max-width:560px){ .cards8{grid-template-columns:repeat(4,1fr)} .f3{grid-template-columns:1fr} .deck .title{padding-right:0} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>皇室战争 · 卡组一键导入</h1>
+    <p>点选一套卡组 → 复制导入链接 / 扫码 / 在手机上直接打开 → 游戏内自动载入卡组</p>
+    <div class="hintbox">
+      <b>电脑上用：</b>点开一套卡组 → 手机扫二维码 → 点页面上的 “Copy the deck” → 游戏弹出并载入卡组。<br>
+      <b>手机上用：</b>直接打开本页面 → 点 “在手机上导入” → 跳到游戏载入卡组。
+    </div>
+  </header>
+
+  <div class="rowhead">
+    <h2>我的卡组</h2>
+    <span class="sp"></span>
+    <button id="addBtn" class="ghostbtn">＋ 添加卡组</button>
+    <button id="settingsBtn" class="ghostbtn">⚙ 设置</button>
+  </div>
+  <div id="decks" class="decks"></div>
+
+  <footer>
+    深链格式：<code style="color:#bcd0ff">clashroyale://copyDeck?deck=ID;ID;…&amp;l=Royals&amp;tt=159000000</code>，
+    经由官方跳转页 <code style="color:#bcd0ff">link.clashroyale.com</code> 打开游戏。
+    卡牌数据与卡图来自 Supercell 官方 CDN，本页面为粉丝工具，与 Supercell 无官方关联。
+    <span id="ver" style="margin-left:6px;color:#5f6c9c"></span>
+  </footer>
+</div>
+
+<!-- 卡组详情 -->
+<dialog id="detail">
+  <div class="dlg-head"><h3 id="dTitle">卡组</h3><button class="close" data-close="detail">×</button></div>
+  <div class="dlg-body">
+    <div id="dCards" class="cards8"></div>
+    <div id="dVariants" class="note"></div>
+    <div class="actions">
+      <a id="openBtn" class="btn primary" href="#">在手机上导入</a>
+      <button id="copyBtn" class="btn blue">复制导入链接</button>
+      <button id="copyDeepBtn" class="btn ghost">复制深链</button>
+    </div>
+    <div class="qrrow">
+      <div class="qrbox" id="qr"></div>
+      <div class="qrhint">
+        电脑端：用<b>手机相机</b>扫码 → 打开官方页面 → 点 “Copy the deck” → 游戏自动载入。<br><br>
+        若扫码后没有自动跳转游戏，请确认手机上已安装《皇室战争》。
+      </div>
+    </div>
+    <div id="linkText" class="linkbox"></div>
+    <div id="dNote" class="note"></div>
+  </div>
+</dialog>
+
+<!-- 添加 / 编辑卡组 -->
+<dialog id="editor" class="editor">
+  <div class="dlg-head"><h3 id="eTitle">添加卡组</h3><button class="close" data-close="editor">×</button></div>
+  <div class="dlg-body">
+    <label>卡组名称</label>
+    <input type="text" id="eName" placeholder="例如：迫击炮 / 2.6 猪 / 天梯主力">
+    <label>导入已有内容（可选）：粘贴复制卡组链接、deck=… 或 8 个卡牌 ID</label>
+    <textarea id="ePaste" placeholder="https://link.clashroyale.com/en/?clashroyale://copyDeck?deck=27000002;26000023;… 或  27000002;26000023;…"></textarea>
+    <div style="margin-top:6px"><button class="btn ghost sm" id="eParse">解析到下方选卡</button></div>
+
+    <label>选择 8 张卡（<span id="eCount">0</span>/8）· 点已选卡可设置形态</label>
+    <div class="picker">
+      <div class="selrow" id="eSel"></div>
+      <div class="ruleline" id="eRules"></div>
+      <div class="fbar">
+        <input type="text" id="eSearch" placeholder="搜索卡牌名（英文）…">
+        <select id="eSort" title="排序方式">
+          <option value="id">默认顺序</option>
+          <option value="costAsc">费用 ↑</option>
+          <option value="costDesc">费用 ↓</option>
+          <option value="name">名称 A→Z</option>
+          <option value="evo">可觉醒优先</option>
+          <option value="hero">可精英优先</option>
+          <option value="champ">英雄优先</option>
+        </select>
+      </div>
+      <div class="chips" id="eChips"></div>
+      <div class="grid" id="eGrid"></div>
+    </div>
+    <div class="hint" id="eHint"></div>
+    <div class="actions">
+      <button class="btn primary" id="eSave">保存卡组</button>
+      <button class="btn ghost" data-close="editor">取消</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- 设置 -->
+<dialog id="settings" class="settings">
+  <div class="dlg-head"><h3>设置</h3><button class="close" data-close="settings">×</button></div>
+  <div class="dlg-body">
+    <div class="sec">
+      <h4>链接参数</h4>
+      <div class="f2">
+        <div><label>卡组标签 l</label><input type="text" id="sLabel"></div>
+        <div><label>tt 参数</label><input type="text" id="sTt"></div>
+      </div>
+      <div class="hint">默认沿用官方 / RoyaleAPI 的写法（l=Royals、tt=159000000），一般无需修改。</div>
+    </div>
+
+    <div class="sec">
+      <h4>形态信息（觉醒 / 英雄 / 精英）</h4>
+      <label class="switch"><input type="checkbox" id="sEmit"> 在链接中附带形态信息（slots=…）</label>
+      <div class="f2">
+        <div><label>觉醒编码</label><input type="text" id="sEvo" placeholder="1"></div>
+        <div><label>精英编码</label><input type="text" id="sHero" placeholder="留空=不写入"></div>
+      </div>
+      <div class="hint">
+        <b>觉醒编码 1</b> 是已验证的官方写法（<code>slots</code> 与 <code>deck</code> 逐位对应，1 = 觉醒）；
+        精英的编码目前没有公开资料，留空表示不写入链接（导入后需在游戏内手动设置）。
+        英雄卡是卡牌固有属性，不需要编码。
+      </div>
+    </div>
+
+    <div class="sec">
+      <h4>槽位规则（每个位置允许的形态）</h4>
+      <table class="rules">
+        <thead><tr><th>位置</th><th title="普通卡：8 个格子都能放"><span class="star silver">★</span> 普通</th><th><span class="star purple">★</span> 觉醒</th><th><span class="star orange">★</span> 精英</th><th><span class="star orange">★</span> 英雄</th></tr></thead>
+        <tbody id="sRules"></tbody>
+      </table>
+      <div class="hint">默认：第 1 格可放<b>觉醒</b>；第 2 格可放<b>精英 / 英雄</b>；第 3 格为万能槽（觉醒 / 精英 / 英雄）；第 4–8 格只能放普通卡。可按你游戏里的实际情况修改。</div>
+    </div>
+
+    <div class="sec">
+      <h4>卡组数据（保存在浏览器本地，不在 HTML 文件里）</h4>
+      <textarea id="sData" readonly style="min-height:96px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px"></textarea>
+      <div class="hint">上面是你当前浏览器里实际保存的卡组（localStorage <code>cr_decks_v2</code>），页面显示的以它为准，而不是文件里写死的示例。</div>
+      <div class="actions">
+        <button class="btn ghost sm" id="sRefresh">刷新查看</button>
+        <button class="btn ghost sm" id="sClear">清空全部卡组</button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="actions">
+        <button class="btn primary sm" id="sSave">保存设置</button>
+        <button class="btn ghost sm" id="sReset">恢复默认设置</button>
+        <button class="btn ghost sm" id="sSeed">恢复示例卡组</button>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<div id="toast" class="toast"></div>
+
+<script>/* qrcodejs v1.0.0 - (c) 2012 davidshimjs - MIT License - https://github.com/davidshimjs/qrcodejs */
+var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this.parsedData=[];for(var b=[],d=0,e=this.data.length;e>d;d++){var f=this.data.charCodeAt(d);f>65536?(b[0]=240|(1835008&f)>>>18,b[1]=128|(258048&f)>>>12,b[2]=128|(4032&f)>>>6,b[3]=128|63&f):f>2048?(b[0]=224|(61440&f)>>>12,b[1]=128|(4032&f)>>>6,b[2]=128|63&f):f>128?(b[0]=192|(1984&f)>>>6,b[1]=128|63&f):b[0]=f,this.parsedData=this.parsedData.concat(b)}this.parsedData.length!=this.data.length&&(this.parsedData.unshift(191),this.parsedData.unshift(187),this.parsedData.unshift(239))}function b(a,b){this.typeNumber=a,this.errorCorrectLevel=b,this.modules=null,this.moduleCount=0,this.dataCache=null,this.dataList=[]}function i(a,b){if(void 0==a.length)throw new Error(a.length+"/"+b);for(var c=0;c<a.length&&0==a[c];)c++;this.num=new Array(a.length-c+b);for(var d=0;d<a.length-c;d++)this.num[d]=a[d+c]}function j(a,b){this.totalCount=a,this.dataCount=b}function k(){this.buffer=[],this.length=0}function m(){return"undefined"!=typeof CanvasRenderingContext2D}function n(){var a=!1,b=navigator.userAgent;return/android/i.test(b)&&(a=!0,aMat=b.toString().match(/android ([0-9]\.[0-9])/i),aMat&&aMat[1]&&(a=parseFloat(aMat[1]))),a}function r(a,b){for(var c=1,e=s(a),f=0,g=l.length;g>=f;f++){var h=0;switch(b){case d.L:h=l[f][0];break;case d.M:h=l[f][1];break;case d.Q:h=l[f][2];break;case d.H:h=l[f][3]}if(h>=e)break;c++}if(c>l.length)throw new Error("Too long data");return c}function s(a){var b=encodeURI(a).toString().replace(/\%[0-9a-fA-F]{2}/g,"a");return b.length+(b.length!=a?3:0)}a.prototype={getLength:function(){return this.parsedData.length},write:function(a){for(var b=0,c=this.parsedData.length;c>b;b++)a.put(this.parsedData[b],8)}},b.prototype={addData:function(b){var c=new a(b);this.dataList.push(c),this.dataCache=null},isDark:function(a,b){if(0>a||this.moduleCount<=a||0>b||this.moduleCount<=b)throw new Error(a+","+b);return this.modules[a][b]},getModuleCount:function(){return this.moduleCount},make:function(){this.makeImpl(!1,this.getBestMaskPattern())},makeImpl:function(a,c){this.moduleCount=4*this.typeNumber+17,this.modules=new Array(this.moduleCount);for(var d=0;d<this.moduleCount;d++){this.modules[d]=new Array(this.moduleCount);for(var e=0;e<this.moduleCount;e++)this.modules[d][e]=null}this.setupPositionProbePattern(0,0),this.setupPositionProbePattern(this.moduleCount-7,0),this.setupPositionProbePattern(0,this.moduleCount-7),this.setupPositionAdjustPattern(),this.setupTimingPattern(),this.setupTypeInfo(a,c),this.typeNumber>=7&&this.setupTypeNumber(a),null==this.dataCache&&(this.dataCache=b.createData(this.typeNumber,this.errorCorrectLevel,this.dataList)),this.mapData(this.dataCache,c)},setupPositionProbePattern:function(a,b){for(var c=-1;7>=c;c++)if(!(-1>=a+c||this.moduleCount<=a+c))for(var d=-1;7>=d;d++)-1>=b+d||this.moduleCount<=b+d||(this.modules[a+c][b+d]=c>=0&&6>=c&&(0==d||6==d)||d>=0&&6>=d&&(0==c||6==c)||c>=2&&4>=c&&d>=2&&4>=d?!0:!1)},getBestMaskPattern:function(){for(var a=0,b=0,c=0;8>c;c++){this.makeImpl(!0,c);var d=f.getLostPoint(this);(0==c||a>d)&&(a=d,b=c)}return b},createMovieClip:function(a,b,c){var d=a.createEmptyMovieClip(b,c),e=1;this.make();for(var f=0;f<this.modules.length;f++)for(var g=f*e,h=0;h<this.modules[f].length;h++){var i=h*e,j=this.modules[f][h];j&&(d.beginFill(0,100),d.moveTo(i,g),d.lineTo(i+e,g),d.lineTo(i+e,g+e),d.lineTo(i,g+e),d.endFill())}return d},setupTimingPattern:function(){for(var a=8;a<this.moduleCount-8;a++)null==this.modules[a][6]&&(this.modules[a][6]=0==a%2);for(var b=8;b<this.moduleCount-8;b++)null==this.modules[6][b]&&(this.modules[6][b]=0==b%2)},setupPositionAdjustPattern:function(){for(var a=f.getPatternPosition(this.typeNumber),b=0;b<a.length;b++)for(var c=0;c<a.length;c++){var d=a[b],e=a[c];if(null==this.modules[d][e])for(var g=-2;2>=g;g++)for(var h=-2;2>=h;h++)this.modules[d+g][e+h]=-2==g||2==g||-2==h||2==h||0==g&&0==h?!0:!1}},setupTypeNumber:function(a){for(var b=f.getBCHTypeNumber(this.typeNumber),c=0;18>c;c++){var d=!a&&1==(1&b>>c);this.modules[Math.floor(c/3)][c%3+this.moduleCount-8-3]=d}for(var c=0;18>c;c++){var d=!a&&1==(1&b>>c);this.modules[c%3+this.moduleCount-8-3][Math.floor(c/3)]=d}},setupTypeInfo:function(a,b){for(var c=this.errorCorrectLevel<<3|b,d=f.getBCHTypeInfo(c),e=0;15>e;e++){var g=!a&&1==(1&d>>e);6>e?this.modules[e][8]=g:8>e?this.modules[e+1][8]=g:this.modules[this.moduleCount-15+e][8]=g}for(var e=0;15>e;e++){var g=!a&&1==(1&d>>e);8>e?this.modules[8][this.moduleCount-e-1]=g:9>e?this.modules[8][15-e-1+1]=g:this.modules[8][15-e-1]=g}this.modules[this.moduleCount-8][8]=!a},mapData:function(a,b){for(var c=-1,d=this.moduleCount-1,e=7,g=0,h=this.moduleCount-1;h>0;h-=2)for(6==h&&h--;;){for(var i=0;2>i;i++)if(null==this.modules[d][h-i]){var j=!1;g<a.length&&(j=1==(1&a[g]>>>e));var k=f.getMask(b,d,h-i);k&&(j=!j),this.modules[d][h-i]=j,e--,-1==e&&(g++,e=7)}if(d+=c,0>d||this.moduleCount<=d){d-=c,c=-c;break}}}},b.PAD0=236,b.PAD1=17,b.createData=function(a,c,d){for(var e=j.getRSBlocks(a,c),g=new k,h=0;h<d.length;h++){var i=d[h];g.put(i.mode,4),g.put(i.getLength(),f.getLengthInBits(i.mode,a)),i.write(g)}for(var l=0,h=0;h<e.length;h++)l+=e[h].dataCount;if(g.getLengthInBits()>8*l)throw new Error("code length overflow. ("+g.getLengthInBits()+">"+8*l+")");for(g.getLengthInBits()+4<=8*l&&g.put(0,4);0!=g.getLengthInBits()%8;)g.putBit(!1);for(;;){if(g.getLengthInBits()>=8*l)break;if(g.put(b.PAD0,8),g.getLengthInBits()>=8*l)break;g.put(b.PAD1,8)}return b.createBytes(g,e)},b.createBytes=function(a,b){for(var c=0,d=0,e=0,g=new Array(b.length),h=new Array(b.length),j=0;j<b.length;j++){var k=b[j].dataCount,l=b[j].totalCount-k;d=Math.max(d,k),e=Math.max(e,l),g[j]=new Array(k);for(var m=0;m<g[j].length;m++)g[j][m]=255&a.buffer[m+c];c+=k;var n=f.getErrorCorrectPolynomial(l),o=new i(g[j],n.getLength()-1),p=o.mod(n);h[j]=new Array(n.getLength()-1);for(var m=0;m<h[j].length;m++){var q=m+p.getLength()-h[j].length;h[j][m]=q>=0?p.get(q):0}}for(var r=0,m=0;m<b.length;m++)r+=b[m].totalCount;for(var s=new Array(r),t=0,m=0;d>m;m++)for(var j=0;j<b.length;j++)m<g[j].length&&(s[t++]=g[j][m]);for(var m=0;e>m;m++)for(var j=0;j<b.length;j++)m<h[j].length&&(s[t++]=h[j][m]);return s};for(var c={MODE_NUMBER:1,MODE_ALPHA_NUM:2,MODE_8BIT_BYTE:4,MODE_KANJI:8},d={L:1,M:0,Q:3,H:2},e={PATTERN000:0,PATTERN001:1,PATTERN010:2,PATTERN011:3,PATTERN100:4,PATTERN101:5,PATTERN110:6,PATTERN111:7},f={PATTERN_POSITION_TABLE:[[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50],[6,30,54],[6,32,58],[6,34,62],[6,26,46,66],[6,26,48,70],[6,26,50,74],[6,30,54,78],[6,30,56,82],[6,30,58,86],[6,34,62,90],[6,28,50,72,94],[6,26,50,74,98],[6,30,54,78,102],[6,28,54,80,106],[6,32,58,84,110],[6,30,58,86,114],[6,34,62,90,118],[6,26,50,74,98,122],[6,30,54,78,102,126],[6,26,52,78,104,130],[6,30,56,82,108,134],[6,34,60,86,112,138],[6,30,58,86,114,142],[6,34,62,90,118,146],[6,30,54,78,102,126,150],[6,24,50,76,102,128,154],[6,28,54,80,106,132,158],[6,32,58,84,110,136,162],[6,26,54,82,110,138,166],[6,30,58,86,114,142,170]],G15:1335,G18:7973,G15_MASK:21522,getBCHTypeInfo:function(a){for(var b=a<<10;f.getBCHDigit(b)-f.getBCHDigit(f.G15)>=0;)b^=f.G15<<f.getBCHDigit(b)-f.getBCHDigit(f.G15);return(a<<10|b)^f.G15_MASK},getBCHTypeNumber:function(a){for(var b=a<<12;f.getBCHDigit(b)-f.getBCHDigit(f.G18)>=0;)b^=f.G18<<f.getBCHDigit(b)-f.getBCHDigit(f.G18);return a<<12|b},getBCHDigit:function(a){for(var b=0;0!=a;)b++,a>>>=1;return b},getPatternPosition:function(a){return f.PATTERN_POSITION_TABLE[a-1]},getMask:function(a,b,c){switch(a){case e.PATTERN000:return 0==(b+c)%2;case e.PATTERN001:return 0==b%2;case e.PATTERN010:return 0==c%3;case e.PATTERN011:return 0==(b+c)%3;case e.PATTERN100:return 0==(Math.floor(b/2)+Math.floor(c/3))%2;case e.PATTERN101:return 0==b*c%2+b*c%3;case e.PATTERN110:return 0==(b*c%2+b*c%3)%2;case e.PATTERN111:return 0==(b*c%3+(b+c)%2)%2;default:throw new Error("bad maskPattern:"+a)}},getErrorCorrectPolynomial:function(a){for(var b=new i([1],0),c=0;a>c;c++)b=b.multiply(new i([1,g.gexp(c)],0));return b},getLengthInBits:function(a,b){if(b>=1&&10>b)switch(a){case c.MODE_NUMBER:return 10;case c.MODE_ALPHA_NUM:return 9;case c.MODE_8BIT_BYTE:return 8;case c.MODE_KANJI:return 8;default:throw new Error("mode:"+a)}else if(27>b)switch(a){case c.MODE_NUMBER:return 12;case c.MODE_ALPHA_NUM:return 11;case c.MODE_8BIT_BYTE:return 16;case c.MODE_KANJI:return 10;default:throw new Error("mode:"+a)}else{if(!(41>b))throw new Error("type:"+b);switch(a){case c.MODE_NUMBER:return 14;case c.MODE_ALPHA_NUM:return 13;case c.MODE_8BIT_BYTE:return 16;case c.MODE_KANJI:return 12;default:throw new Error("mode:"+a)}}},getLostPoint:function(a){for(var b=a.getModuleCount(),c=0,d=0;b>d;d++)for(var e=0;b>e;e++){for(var f=0,g=a.isDark(d,e),h=-1;1>=h;h++)if(!(0>d+h||d+h>=b))for(var i=-1;1>=i;i++)0>e+i||e+i>=b||(0!=h||0!=i)&&g==a.isDark(d+h,e+i)&&f++;f>5&&(c+=3+f-5)}for(var d=0;b-1>d;d++)for(var e=0;b-1>e;e++){var j=0;a.isDark(d,e)&&j++,a.isDark(d+1,e)&&j++,a.isDark(d,e+1)&&j++,a.isDark(d+1,e+1)&&j++,(0==j||4==j)&&(c+=3)}for(var d=0;b>d;d++)for(var e=0;b-6>e;e++)a.isDark(d,e)&&!a.isDark(d,e+1)&&a.isDark(d,e+2)&&a.isDark(d,e+3)&&a.isDark(d,e+4)&&!a.isDark(d,e+5)&&a.isDark(d,e+6)&&(c+=40);for(var e=0;b>e;e++)for(var d=0;b-6>d;d++)a.isDark(d,e)&&!a.isDark(d+1,e)&&a.isDark(d+2,e)&&a.isDark(d+3,e)&&a.isDark(d+4,e)&&!a.isDark(d+5,e)&&a.isDark(d+6,e)&&(c+=40);for(var k=0,e=0;b>e;e++)for(var d=0;b>d;d++)a.isDark(d,e)&&k++;var l=Math.abs(100*k/b/b-50)/5;return c+=10*l}},g={glog:function(a){if(1>a)throw new Error("glog("+a+")");return g.LOG_TABLE[a]},gexp:function(a){for(;0>a;)a+=255;for(;a>=256;)a-=255;return g.EXP_TABLE[a]},EXP_TABLE:new Array(256),LOG_TABLE:new Array(256)},h=0;8>h;h++)g.EXP_TABLE[h]=1<<h;for(var h=8;256>h;h++)g.EXP_TABLE[h]=g.EXP_TABLE[h-4]^g.EXP_TABLE[h-5]^g.EXP_TABLE[h-6]^g.EXP_TABLE[h-8];for(var h=0;255>h;h++)g.LOG_TABLE[g.EXP_TABLE[h]]=h;i.prototype={get:function(a){return this.num[a]},getLength:function(){return this.num.length},multiply:function(a){for(var b=new Array(this.getLength()+a.getLength()-1),c=0;c<this.getLength();c++)for(var d=0;d<a.getLength();d++)b[c+d]^=g.gexp(g.glog(this.get(c))+g.glog(a.get(d)));return new i(b,0)},mod:function(a){if(this.getLength()-a.getLength()<0)return this;for(var b=g.glog(this.get(0))-g.glog(a.get(0)),c=new Array(this.getLength()),d=0;d<this.getLength();d++)c[d]=this.get(d);for(var d=0;d<a.getLength();d++)c[d]^=g.gexp(g.glog(a.get(d))+b);return new i(c,0).mod(a)}},j.RS_BLOCK_TABLE=[[1,26,19],[1,26,16],[1,26,13],[1,26,9],[1,44,34],[1,44,28],[1,44,22],[1,44,16],[1,70,55],[1,70,44],[2,35,17],[2,35,13],[1,100,80],[2,50,32],[2,50,24],[4,25,9],[1,134,108],[2,67,43],[2,33,15,2,34,16],[2,33,11,2,34,12],[2,86,68],[4,43,27],[4,43,19],[4,43,15],[2,98,78],[4,49,31],[2,32,14,4,33,15],[4,39,13,1,40,14],[2,121,97],[2,60,38,2,61,39],[4,40,18,2,41,19],[4,40,14,2,41,15],[2,146,116],[3,58,36,2,59,37],[4,36,16,4,37,17],[4,36,12,4,37,13],[2,86,68,2,87,69],[4,69,43,1,70,44],[6,43,19,2,44,20],[6,43,15,2,44,16],[4,101,81],[1,80,50,4,81,51],[4,50,22,4,51,23],[3,36,12,8,37,13],[2,116,92,2,117,93],[6,58,36,2,59,37],[4,46,20,6,47,21],[7,42,14,4,43,15],[4,133,107],[8,59,37,1,60,38],[8,44,20,4,45,21],[12,33,11,4,34,12],[3,145,115,1,146,116],[4,64,40,5,65,41],[11,36,16,5,37,17],[11,36,12,5,37,13],[5,109,87,1,110,88],[5,65,41,5,66,42],[5,54,24,7,55,25],[11,36,12],[5,122,98,1,123,99],[7,73,45,3,74,46],[15,43,19,2,44,20],[3,45,15,13,46,16],[1,135,107,5,136,108],[10,74,46,1,75,47],[1,50,22,15,51,23],[2,42,14,17,43,15],[5,150,120,1,151,121],[9,69,43,4,70,44],[17,50,22,1,51,23],[2,42,14,19,43,15],[3,141,113,4,142,114],[3,70,44,11,71,45],[17,47,21,4,48,22],[9,39,13,16,40,14],[3,135,107,5,136,108],[3,67,41,13,68,42],[15,54,24,5,55,25],[15,43,15,10,44,16],[4,144,116,4,145,117],[17,68,42],[17,50,22,6,51,23],[19,46,16,6,47,17],[2,139,111,7,140,112],[17,74,46],[7,54,24,16,55,25],[34,37,13],[4,151,121,5,152,122],[4,75,47,14,76,48],[11,54,24,14,55,25],[16,45,15,14,46,16],[6,147,117,4,148,118],[6,73,45,14,74,46],[11,54,24,16,55,25],[30,46,16,2,47,17],[8,132,106,4,133,107],[8,75,47,13,76,48],[7,54,24,22,55,25],[22,45,15,13,46,16],[10,142,114,2,143,115],[19,74,46,4,75,47],[28,50,22,6,51,23],[33,46,16,4,47,17],[8,152,122,4,153,123],[22,73,45,3,74,46],[8,53,23,26,54,24],[12,45,15,28,46,16],[3,147,117,10,148,118],[3,73,45,23,74,46],[4,54,24,31,55,25],[11,45,15,31,46,16],[7,146,116,7,147,117],[21,73,45,7,74,46],[1,53,23,37,54,24],[19,45,15,26,46,16],[5,145,115,10,146,116],[19,75,47,10,76,48],[15,54,24,25,55,25],[23,45,15,25,46,16],[13,145,115,3,146,116],[2,74,46,29,75,47],[42,54,24,1,55,25],[23,45,15,28,46,16],[17,145,115],[10,74,46,23,75,47],[10,54,24,35,55,25],[19,45,15,35,46,16],[17,145,115,1,146,116],[14,74,46,21,75,47],[29,54,24,19,55,25],[11,45,15,46,46,16],[13,145,115,6,146,116],[14,74,46,23,75,47],[44,54,24,7,55,25],[59,46,16,1,47,17],[12,151,121,7,152,122],[12,75,47,26,76,48],[39,54,24,14,55,25],[22,45,15,41,46,16],[6,151,121,14,152,122],[6,75,47,34,76,48],[46,54,24,10,55,25],[2,45,15,64,46,16],[17,152,122,4,153,123],[29,74,46,14,75,47],[49,54,24,10,55,25],[24,45,15,46,46,16],[4,152,122,18,153,123],[13,74,46,32,75,47],[48,54,24,14,55,25],[42,45,15,32,46,16],[20,147,117,4,148,118],[40,75,47,7,76,48],[43,54,24,22,55,25],[10,45,15,67,46,16],[19,148,118,6,149,119],[18,75,47,31,76,48],[34,54,24,34,55,25],[20,45,15,61,46,16]],j.getRSBlocks=function(a,b){var c=j.getRsBlockTable(a,b);if(void 0==c)throw new Error("bad rs block @ typeNumber:"+a+"/errorCorrectLevel:"+b);for(var d=c.length/3,e=[],f=0;d>f;f++)for(var g=c[3*f+0],h=c[3*f+1],i=c[3*f+2],k=0;g>k;k++)e.push(new j(h,i));return e},j.getRsBlockTable=function(a,b){switch(b){case d.L:return j.RS_BLOCK_TABLE[4*(a-1)+0];case d.M:return j.RS_BLOCK_TABLE[4*(a-1)+1];case d.Q:return j.RS_BLOCK_TABLE[4*(a-1)+2];case d.H:return j.RS_BLOCK_TABLE[4*(a-1)+3];default:return void 0}},k.prototype={get:function(a){var b=Math.floor(a/8);return 1==(1&this.buffer[b]>>>7-a%8)},put:function(a,b){for(var c=0;b>c;c++)this.putBit(1==(1&a>>>b-c-1))},getLengthInBits:function(){return this.length},putBit:function(a){var b=Math.floor(this.length/8);this.buffer.length<=b&&this.buffer.push(0),a&&(this.buffer[b]|=128>>>this.length%8),this.length++}};var l=[[17,14,11,7],[32,26,20,14],[53,42,32,24],[78,62,46,34],[106,84,60,44],[134,106,74,58],[154,122,86,64],[192,152,108,84],[230,180,130,98],[271,213,151,119],[321,251,177,137],[367,287,203,155],[425,331,241,177],[458,362,258,194],[520,412,292,220],[586,450,322,250],[644,504,364,280],[718,560,394,310],[792,624,442,338],[858,666,482,382],[929,711,509,403],[1003,779,565,439],[1091,857,611,461],[1171,911,661,511],[1273,997,715,535],[1367,1059,751,593],[1465,1125,805,625],[1528,1190,868,658],[1628,1264,908,698],[1732,1370,982,742],[1840,1452,1030,790],[1952,1538,1112,842],[2068,1628,1168,898],[2188,1722,1228,958],[2303,1809,1283,983],[2431,1911,1351,1051],[2563,1989,1423,1093],[2699,2099,1499,1139],[2809,2213,1579,1219],[2953,2331,1663,1273]],o=function(){var a=function(a,b){this._el=a,this._htOption=b};return a.prototype.draw=function(a){function g(a,b){var c=document.createElementNS("http://www.w3.org/2000/svg",a);for(var d in b)b.hasOwnProperty(d)&&c.setAttribute(d,b[d]);return c}var b=this._htOption,c=this._el,d=a.getModuleCount();Math.floor(b.width/d),Math.floor(b.height/d),this.clear();var h=g("svg",{viewBox:"0 0 "+String(d)+" "+String(d),width:"100%",height:"100%",fill:b.colorLight});h.setAttributeNS("http://www.w3.org/2000/xmlns/","xmlns:xlink","http://www.w3.org/1999/xlink"),c.appendChild(h),h.appendChild(g("rect",{fill:b.colorDark,width:"1",height:"1",id:"template"}));for(var i=0;d>i;i++)for(var j=0;d>j;j++)if(a.isDark(i,j)){var k=g("use",{x:String(i),y:String(j)});k.setAttributeNS("http://www.w3.org/1999/xlink","href","#template"),h.appendChild(k)}},a.prototype.clear=function(){for(;this._el.hasChildNodes();)this._el.removeChild(this._el.lastChild)},a}(),p="svg"===document.documentElement.tagName.toLowerCase(),q=p?o:m()?function(){function a(){this._elImage.src=this._elCanvas.toDataURL("image/png"),this._elImage.style.display="block",this._elCanvas.style.display="none"}function d(a,b){var c=this;if(c._fFail=b,c._fSuccess=a,null===c._bSupportDataURI){var d=document.createElement("img"),e=function(){c._bSupportDataURI=!1,c._fFail&&_fFail.call(c)},f=function(){c._bSupportDataURI=!0,c._fSuccess&&c._fSuccess.call(c)};return d.onabort=e,d.onerror=e,d.onload=f,d.src="data:image/gif;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg==",void 0}c._bSupportDataURI===!0&&c._fSuccess?c._fSuccess.call(c):c._bSupportDataURI===!1&&c._fFail&&c._fFail.call(c)}if(this._android&&this._android<=2.1){var b=1/window.devicePixelRatio,c=CanvasRenderingContext2D.prototype.drawImage;CanvasRenderingContext2D.prototype.drawImage=function(a,d,e,f,g,h,i,j){if("nodeName"in a&&/img/i.test(a.nodeName))for(var l=arguments.length-1;l>=1;l--)arguments[l]=arguments[l]*b;else"undefined"==typeof j&&(arguments[1]*=b,arguments[2]*=b,arguments[3]*=b,arguments[4]*=b);c.apply(this,arguments)}}var e=function(a,b){this._bIsPainted=!1,this._android=n(),this._htOption=b,this._elCanvas=document.createElement("canvas"),this._elCanvas.width=b.width,this._elCanvas.height=b.height,a.appendChild(this._elCanvas),this._el=a,this._oContext=this._elCanvas.getContext("2d"),this._bIsPainted=!1,this._elImage=document.createElement("img"),this._elImage.style.display="none",this._el.appendChild(this._elImage),this._bSupportDataURI=null};return e.prototype.draw=function(a){var b=this._elImage,c=this._oContext,d=this._htOption,e=a.getModuleCount(),f=d.width/e,g=d.height/e,h=Math.round(f),i=Math.round(g);b.style.display="none",this.clear();for(var j=0;e>j;j++)for(var k=0;e>k;k++){var l=a.isDark(j,k),m=k*f,n=j*g;c.strokeStyle=l?d.colorDark:d.colorLight,c.lineWidth=1,c.fillStyle=l?d.colorDark:d.colorLight,c.fillRect(m,n,f,g),c.strokeRect(Math.floor(m)+.5,Math.floor(n)+.5,h,i),c.strokeRect(Math.ceil(m)-.5,Math.ceil(n)-.5,h,i)}this._bIsPainted=!0},e.prototype.makeImage=function(){this._bIsPainted&&d.call(this,a)},e.prototype.isPainted=function(){return this._bIsPainted},e.prototype.clear=function(){this._oContext.clearRect(0,0,this._elCanvas.width,this._elCanvas.height),this._bIsPainted=!1},e.prototype.round=function(a){return a?Math.floor(1e3*a)/1e3:a},e}():function(){var a=function(a,b){this._el=a,this._htOption=b};return a.prototype.draw=function(a){for(var b=this._htOption,c=this._el,d=a.getModuleCount(),e=Math.floor(b.width/d),f=Math.floor(b.height/d),g=['<table style="border:0;border-collapse:collapse;">'],h=0;d>h;h++){g.push("<tr>");for(var i=0;d>i;i++)g.push('<td style="border:0;border-collapse:collapse;padding:0;margin:0;width:'+e+"px;height:"+f+"px;background-color:"+(a.isDark(h,i)?b.colorDark:b.colorLight)+';"></td>');g.push("</tr>")}g.push("</table>"),c.innerHTML=g.join("");var j=c.childNodes[0],k=(b.width-j.offsetWidth)/2,l=(b.height-j.offsetHeight)/2;k>0&&l>0&&(j.style.margin=l+"px "+k+"px")},a.prototype.clear=function(){this._el.innerHTML=""},a}();QRCode=function(a,b){if(this._htOption={width:256,height:256,typeNumber:4,colorDark:"#000000",colorLight:"#ffffff",correctLevel:d.H},"string"==typeof b&&(b={text:b}),b)for(var c in b)this._htOption[c]=b[c];"string"==typeof a&&(a=document.getElementById(a)),this._android=n(),this._el=a,this._oQRCode=null,this._oDrawing=new q(this._el,this._htOption),this._htOption.text&&this.makeCode(this._htOption.text)},QRCode.prototype.makeCode=function(a){this._oQRCode=new b(r(a,this._htOption.correctLevel),this._htOption.correctLevel),this._oQRCode.addData(a),this._oQRCode.make(),this._el.title=a,this._oDrawing.draw(this._oQRCode),this.makeImage()},QRCode.prototype.makeImage=function(){"function"==typeof this._oDrawing.makeImage&&(!this._android||this._android>=3)&&this._oDrawing.makeImage()},QRCode.prototype.clear=function(){this._oDrawing.clear()},QRCode.CorrectLevel=d}();</script>
+<script>
+const CARDS = [
+  {"id": 26000000, "name": "Knight", "cost": 3, "slug": "knight", "h": "jAj1Q5rclXxU9kVImGqSJxa4wEMfEhvwNQ_4jiGUuqg", "evo": 1, "hero": 1, "champ": 0, "rar": "common", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000001, "name": "Archers", "cost": 3, "slug": "archers", "h": "W4Hmp8MTSdXANN8KdblbtHwtsbt0o749BbxNqmJYfA8", "evo": 1, "hero": 0, "champ": 0, "rar": "common", "t": 1, "air": 0, "siege": 0, "back": 1},
+  {"id": 26000002, "name": "Goblins", "cost": 2, "slug": "goblins", "h": "X_DQUye_OaS3QN6VC9CPw05Fit7wvSm3XegXIXKP--0", "evo": 0, "hero": 1, "champ": 0, "rar": "common", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000003, "name": "Giant", "cost": 5, "slug": "giant", "h": "Axr4ox5_b7edmLsoHxBX3vmgijAIibuF6RImTbqLlXE", "evo": 0, "hero": 1, "champ": 0, "rar": "rare", "t": 1, "air": 0, "siege": 1, "back": 0},
+  {"id": 26000004, "name": "P.E.K.K.A", "cost": 7, "slug": "pekka", "h": "MlArURKhn_zWAZY-Xj1qIRKLVKquarG25BXDjUQajNs", "evo": 1, "hero": 0, "champ": 0, "rar": "epic", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000005, "name": "Minions", "cost": 3, "slug": "minions", "h": "yHGpoEnmUWPGV_hBbhn-Kk-Bs838OjGzWzJJlQpQKQA", "evo": 0, "hero": 0, "champ": 0, "rar": "common", "t": 1, "air": 1, "siege": 0, "back": 0},
+  {"id": 26000006, "name": "Balloon", "cost": 5, "slug": "balloon", "h": "qBipxLo-3hhCnPrApp2Nn3b2NgrSrvwzWytvREev0CY", "evo": 0, "hero": 1, "champ": 0, "rar": "epic", "t": 1, "air": 1, "siege": 1, "back": 0},
+  {"id": 26000007, "name": "Witch", "cost": 5, "slug": "witch", "h": "cfwk1vzehVyHC-uloEIH6NOI0hOdofCutR5PyhIgO6w", "evo": 1, "hero": 0, "champ": 0, "rar": "epic", "t": 1, "air": 0, "siege": 0, "back": 1},
+  {"id": 26000008, "name": "Barbarians", "cost": 5, "slug": "barbarians", "h": "TvJsuu2S4yhyk1jVYUAQwdKOnW4U77KuWWOTPOWnwfI", "evo": 1, "hero": 0, "champ": 0, "rar": "common", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000009, "name": "Golem", "cost": 8, "slug": "golem", "h": "npdmCnET7jmVjJvjJQkFnNSNnDxYHDBigbvIAloFMds", "evo": 0, "hero": 0, "champ": 0, "rar": "epic", "t": 1, "air": 0, "siege": 1, "back": 0},
+  {"id": 26000010, "name": "Skeletons", "cost": 1, "slug": "skeletons", "h": "oO7iKMU5m0cdxhYPZA3nWQiAUh2yoGgdThLWB1rVSec", "evo": 1, "hero": 0, "champ": 0, "rar": "common", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000011, "name": "Valkyrie", "cost": 4, "slug": "valkyrie", "h": "0lIoYf3Y_plFTzo95zZL93JVxpfb3MMgFDDhgSDGU9A", "evo": 1, "hero": 1, "champ": 0, "rar": "rare", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000012, "name": "Skeleton Army", "cost": 3, "slug": "skeleton-army", "h": "fAOToOi1pRy7svN2xQS6mDkhQw2pj9m_17FauaNqyl4", "evo": 1, "hero": 0, "champ": 0, "rar": "epic", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000013, "name": "Bomber", "cost": 2, "slug": "bomber", "h": "12n1CesxKIcqVYntjxcF36EFA-ONw7Z-DoL0_rQrbdo", "evo": 1, "hero": 0, "champ": 0, "rar": "common", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000014, "name": "Musketeer", "cost": 4, "slug": "musketeer", "h": "Tex1C48UTq9FKtAX-3tzG0FJmc9jzncUZG3bb5Vf-Ds", "evo": 1, "hero": 1, "champ": 0, "rar": "rare", "t": 1, "air": 0, "siege": 0, "back": 1},
+  {"id": 26000015, "name": "Baby Dragon", "cost": 4, "slug": "baby-dragon", "h": "cjC9n4AvEZJ3urkVh-rwBkJ-aRSsydIMqSAV48hAih0", "evo": 1, "hero": 0, "champ": 0, "rar": "epic", "t": 1, "air": 1, "siege": 0, "back": 1},
+  {"id": 26000016, "name": "Prince", "cost": 5, "slug": "prince", "h": "3JntJV62aY0G1Qh6LIs-ek-0ayeYFY3VItpG7cb9I60", "evo": 0, "hero": 0, "champ": 0, "rar": "epic", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000017, "name": "Wizard", "cost": 5, "slug": "wizard", "h": "Mej7vnv4H_3p_8qPs_N6_GKahy6HDr7pU7i9eTHS84U", "evo": 1, "hero": 1, "champ": 0, "rar": "rare", "t": 1, "air": 0, "siege": 0, "back": 1},
+  {"id": 26000018, "name": "Mini P.E.K.K.A", "cost": 4, "slug": "mini-pekka", "h": "Fmltc4j3Ve9vO_xhHHPEO3PRP3SmU2oKp2zkZQHRZT4", "evo": 0, "hero": 1, "champ": 0, "rar": "rare", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000019, "name": "Spear Goblins", "cost": 2, "slug": "spear-goblins", "h": "FSDFotjaXidI4ku_WFpVCTWS1hKGnFh1sxX0lxM43_E", "evo": 0, "hero": 0, "champ": 0, "rar": "common", "t": 1, "air": 0, "siege": 0, "back": 1},
+  {"id": 26000020, "name": "Giant Skeleton", "cost": 6, "slug": "giant-skeleton", "h": "0p0gd0XaVRu1Hb1iSG1hTYbz2AN6aEiZnhaAib5O8Z8", "evo": 0, "hero": 0, "champ": 0, "rar": "epic", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000021, "name": "Hog Rider", "cost": 4, "slug": "hog-rider", "h": "Ubu0oUl8tZkusnkZf8Xv9Vno5IO29Y-jbZ4fhoNJ5oc", "evo": 0, "hero": 0, "champ": 0, "rar": "rare", "t": 1, "air": 0, "siege": 1, "back": 0},
+  {"id": 26000022, "name": "Minion Horde", "cost": 5, "slug": "minion-horde", "h": "Wyjq5l0IXHTkX9Rmpap6HaH08MvjbxFp1xBO9a47YSI", "evo": 1, "hero": 0, "champ": 0, "rar": "common", "t": 1, "air": 1, "siege": 0, "back": 0},
+  {"id": 26000023, "name": "Ice Wizard", "cost": 3, "slug": "ice-wizard", "h": "W3dkw0HTw9n1jB-zbknY2w3wHuyuLxSRIAV5fUT1SEY", "evo": 0, "hero": 1, "champ": 0, "rar": "legendary", "t": 1, "air": 0, "siege": 0, "back": 1},
+  {"id": 26000024, "name": "Royal Giant", "cost": 6, "slug": "royal-giant", "h": "mnlRaNtmfpQx2e6mp70sLd0ND-pKPF70Cf87_agEKg4", "evo": 1, "hero": 0, "champ": 0, "rar": "common", "t": 1, "air": 0, "siege": 1, "back": 0},
+  {"id": 26000025, "name": "Guards", "cost": 3, "slug": "guards", "h": "1ArKfLJxYo6_NU_S9cAeIrfbXqWH0oULVJXedxBXQlU", "evo": 0, "hero": 0, "champ": 0, "rar": "epic", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000026, "name": "Princess", "cost": 3, "slug": "princess", "h": "bAwMcqp9EKVIKH3ZLm_m0MqZFSG72zG-vKxpx8aKoVs", "evo": 1, "hero": 0, "champ": 0, "rar": "legendary", "t": 1, "air": 0, "siege": 0, "back": 1},
+  {"id": 26000027, "name": "Dark Prince", "cost": 4, "slug": "dark-prince", "h": "M7fXlrKXHu2IvpSGpk36kXVstslbR08Bbxcy0jQcln8", "evo": 0, "hero": 1, "champ": 0, "rar": "epic", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000028, "name": "Three Musketeers", "cost": 9, "slug": "three-musketeers", "h": "_J2GhbkX3vswaFk1wG-dopwiHyNc_YiPhwroiKF3Mek", "evo": 0, "hero": 0, "champ": 0, "rar": "rare", "t": 1, "air": 0, "siege": 0, "back": 1},
+  {"id": 26000029, "name": "Lava Hound", "cost": 7, "slug": "lava-hound", "h": "unicRQ975sBY2oLtfgZbAI56ZvaWz7azj-vXTLxc0r8", "evo": 0, "hero": 0, "champ": 0, "rar": "legendary", "t": 1, "air": 1, "siege": 1, "back": 0},
+  {"id": 26000030, "name": "Ice Spirit", "cost": 1, "slug": "ice-spirit", "h": "lv1budiafU9XmSdrDkk0NYyqASAFYyZ06CPysXKZXlA", "evo": 1, "hero": 0, "champ": 0, "rar": "common", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000031, "name": "Fire Spirit", "cost": 1, "slug": "fire-spirit", "h": "16-BqusVvynIgYI8_Jci3LDC-r8AI_xaIYLgXqtlmS8", "evo": 0, "hero": 0, "champ": 0, "rar": "common", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000032, "name": "Miner", "cost": 3, "slug": "miner", "h": "Y4yWvdwBCg2FpAZgs8T09Gy34WOwpLZW-ttL52Ae8NE", "evo": 0, "hero": 0, "champ": 0, "rar": "legendary", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000033, "name": "Sparky", "cost": 6, "slug": "sparky", "h": "2GKMkBrArZXgQxf2ygFjDs4VvGYPbx8F6Lj_68iVhIM", "evo": 0, "hero": 0, "champ": 0, "rar": "legendary", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000034, "name": "Bowler", "cost": 5, "slug": "bowler", "h": "SU4qFXmbQXWjvASxVI6z9IJuTYolx4A0MKK90sTIE88", "evo": 0, "hero": 1, "champ": 0, "rar": "epic", "t": 1, "air": 0, "siege": 0, "back": 1},
+  {"id": 26000035, "name": "Lumberjack", "cost": 4, "slug": "lumberjack", "h": "E6RWrnCuk13xMX5OE1EQtLEKTZQV6B78d00y8PlXt6Q", "evo": 1, "hero": 0, "champ": 0, "rar": "legendary", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000036, "name": "Battle Ram", "cost": 4, "slug": "battle-ram", "h": "dyc50V2cplKi4H7pq1B3I36pl_sEH5DQrNHboS_dbbM", "evo": 1, "hero": 0, "champ": 0, "rar": "rare", "t": 1, "air": 0, "siege": 1, "back": 0},
+  {"id": 26000037, "name": "Inferno Dragon", "cost": 4, "slug": "inferno-dragon", "h": "y5HDbKtTbWG6En6TGWU0xoVIGs1-iQpIP4HC-VM7u8A", "evo": 1, "hero": 0, "champ": 0, "rar": "legendary", "t": 1, "air": 1, "siege": 0, "back": 0},
+  {"id": 26000038, "name": "Ice Golem", "cost": 2, "slug": "ice-golem", "h": "r05cmpwV1o7i7FHodtZwW3fmjbXCW34IJCsDEV5cZC4", "evo": 0, "hero": 1, "champ": 0, "rar": "rare", "t": 1, "air": 0, "siege": 1, "back": 0},
+  {"id": 26000039, "name": "Mega Minion", "cost": 3, "slug": "mega-minion", "h": "-T_e4YLbuhPBKbYnBwQfXgynNpp5eOIN_0RracYwL9c", "evo": 0, "hero": 1, "champ": 0, "rar": "rare", "t": 1, "air": 1, "siege": 0, "back": 1},
+  {"id": 26000040, "name": "Dart Goblin", "cost": 3, "slug": "dart-goblin", "h": "BmpK3bqEAviflqHCdxxnfm-_l3pRPJw3qxHkwS55nCY", "evo": 1, "hero": 0, "champ": 0, "rar": "rare", "t": 1, "air": 0, "siege": 0, "back": 1},
+  {"id": 26000041, "name": "Goblin Gang", "cost": 3, "slug": "goblin-gang", "h": "NHflxzVAQT4oAz7eDfdueqpictb5vrWezn1nuqFhE4w", "evo": 0, "hero": 0, "champ": 0, "rar": "common", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000042, "name": "Electro Wizard", "cost": 4, "slug": "electro-wizard", "h": "RsFaHgB3w6vXsTjXdPr3x8l_GbV9TbOUCvIx07prbrQ", "evo": 0, "hero": 0, "champ": 0, "rar": "legendary", "t": 1, "air": 0, "siege": 0, "back": 1},
+  {"id": 26000043, "name": "Elite Barbarians", "cost": 6, "slug": "elite-barbarians", "h": "C88C5JH_F3lLZj6K-tLcMo5DPjrFmvzIb1R2M6xCfTE", "evo": 1, "hero": 0, "champ": 0, "rar": "common", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000044, "name": "Hunter", "cost": 4, "slug": "hunter", "h": "VNabB1WKnYtYRSG7X_FZfnZjQDHTBs9A96OGMFmecrA", "evo": 1, "hero": 0, "champ": 0, "rar": "epic", "t": 1, "air": 0, "siege": 0, "back": 1},
+  {"id": 26000045, "name": "Executioner", "cost": 5, "slug": "executioner", "h": "9XL5BP2mqzV8kza6KF8rOxrpCZTyuGLp2l413DTjEoM", "evo": 1, "hero": 0, "champ": 0, "rar": "epic", "t": 1, "air": 0, "siege": 0, "back": 1},
+  {"id": 26000046, "name": "Bandit", "cost": 3, "slug": "bandit", "h": "QWDdXMKJNpv0go-HYaWQWP6p8uIOHjqn-zX7G0p3DyM", "evo": 0, "hero": 0, "champ": 0, "rar": "legendary", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000047, "name": "Royal Recruits", "cost": 7, "slug": "royal-recruits", "h": "jcNyYGUiXXNz3kuz8NBkHNKNREQKraXlb_Ts7rhCIdM", "evo": 1, "hero": 0, "champ": 0, "rar": "common", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000048, "name": "Night Witch", "cost": 4, "slug": "night-witch", "h": "NpCrXDEDBBJgNv9QrBAcJmmMFbS7pe3KCY8xJ5VB18A", "evo": 0, "hero": 0, "champ": 0, "rar": "legendary", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000049, "name": "Bats", "cost": 2, "slug": "bats", "h": "EnIcvO21hxiNpoI-zO6MDjLmzwPbq8Z4JPo2OKoVUjU", "evo": 1, "hero": 0, "champ": 0, "rar": "common", "t": 1, "air": 1, "siege": 0, "back": 0},
+  {"id": 26000050, "name": "Royal Ghost", "cost": 3, "slug": "royal-ghost", "h": "3En2cz0ISQAaMTHY3hj3rTveFN2kJYq-H4VxvdJNvCM", "evo": 1, "hero": 0, "champ": 0, "rar": "legendary", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000051, "name": "Ram Rider", "cost": 5, "slug": "ram-rider", "h": "QaJyerT7f7oMyZ3Fv1glKymtLSvx7YUXisAulxl7zRI", "evo": 0, "hero": 0, "champ": 0, "rar": "legendary", "t": 1, "air": 0, "siege": 1, "back": 0},
+  {"id": 26000052, "name": "Zappies", "cost": 4, "slug": "zappies", "h": "QZfHRpLRmutZbCr5fpLnTpIp89vLI6NrAwzGZ8tHEc4", "evo": 0, "hero": 0, "champ": 0, "rar": "rare", "t": 1, "air": 0, "siege": 0, "back": 1},
+  {"id": 26000053, "name": "Rascals", "cost": 5, "slug": "rascals", "h": "KV48DfwVHKx9XCjzBdk3daT_Eb52Me4VgjVO7WctRc4", "evo": 0, "hero": 0, "champ": 0, "rar": "common", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000054, "name": "Cannon Cart", "cost": 5, "slug": "cannon-cart", "h": "aqwxRz8HXzqlMCO4WMXNA1txynjXTsLinknqsgZLbok", "evo": 0, "hero": 0, "champ": 0, "rar": "epic", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000055, "name": "Mega Knight", "cost": 7, "slug": "mega-knight", "h": "O2NycChSNhn_UK9nqBXUhhC_lILkiANzPuJjtjoz0CE", "evo": 1, "hero": 0, "champ": 0, "rar": "legendary", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000056, "name": "Skeleton Barrel", "cost": 3, "slug": "skeleton-barrel", "h": "vCB4DWCcrGbTkarjcOiVz4aNDx6GWLm0yUepg9E1MGo", "evo": 1, "hero": 0, "champ": 0, "rar": "common", "t": 1, "air": 0, "siege": 1, "back": 0},
+  {"id": 26000057, "name": "Flying Machine", "cost": 4, "slug": "flying-machine", "h": "hzKNE3QwFcrSrDDRuVW3QY_OnrDPijSiIp-PsWgFevE", "evo": 0, "hero": 0, "champ": 0, "rar": "rare", "t": 1, "air": 1, "siege": 0, "back": 0},
+  {"id": 26000058, "name": "Wall Breakers", "cost": 2, "slug": "wall-breakers", "h": "_xPphEfC8eEwFNrfU3cMQG9-f5JaLQ31ARCA7l3XtW4", "evo": 1, "hero": 0, "champ": 0, "rar": "epic", "t": 1, "air": 0, "siege": 1, "back": 0},
+  {"id": 26000059, "name": "Royal Hogs", "cost": 5, "slug": "royal-hogs", "h": "ASSQJG_MoVq9e81HZzo4bynMnyLNpNJMfSLb3hqydOw", "evo": 1, "hero": 0, "champ": 0, "rar": "rare", "t": 1, "air": 0, "siege": 1, "back": 0},
+  {"id": 26000060, "name": "Goblin Giant", "cost": 6, "slug": "goblin-giant", "h": "SoW16cY3jXBwaTDvb39DkqiVsoFVaDWbzf5QBYphJrY", "evo": 1, "hero": 0, "champ": 0, "rar": "epic", "t": 1, "air": 0, "siege": 1, "back": 0},
+  {"id": 26000061, "name": "Fisherman", "cost": 3, "slug": "fisherman", "h": "U2KZ3g0wyufcuA5P2Xrn3Z3lr1WiJmc5S0IWOZHgizQ", "evo": 0, "hero": 0, "champ": 0, "rar": "legendary", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000062, "name": "Magic Archer", "cost": 4, "slug": "magic-archer", "h": "Avli3W7BxU9HQ2SoLiXnBgGx25FoNXUSFm7OcAk68ek", "evo": 0, "hero": 1, "champ": 0, "rar": "legendary", "t": 1, "air": 0, "siege": 0, "back": 1},
+  {"id": 26000063, "name": "Electro Dragon", "cost": 5, "slug": "electro-dragon", "h": "tN9h6lnMNPCNsx0LMFmvpHgznbDZ1fBRkx-C7UfNmfY", "evo": 1, "hero": 0, "champ": 0, "rar": "epic", "t": 1, "air": 1, "siege": 0, "back": 1},
+  {"id": 26000064, "name": "Firecracker", "cost": 3, "slug": "firecracker", "h": "c1rL3LO1U2D9-TkeFfAC18gP3AO8ztSwrcHMZplwL2Q", "evo": 1, "hero": 0, "champ": 0, "rar": "common", "t": 1, "air": 0, "siege": 0, "back": 1},
+  {"id": 26000065, "name": "Mighty Miner", "cost": 4, "slug": "mighty-miner", "h": "Cd9R56yraxTvJiD8xJ2qT2OdsHyh94FqOAarXpbyelo", "evo": 0, "hero": 0, "champ": 1, "rar": "champion", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000067, "name": "Elixir Golem", "cost": 3, "slug": "elixir-golem", "h": "puhMsZjCIqy21HW3hYxjrk_xt8NIPyFqjRy-BeLKZwo", "evo": 0, "hero": 0, "champ": 0, "rar": "rare", "t": 1, "air": 0, "siege": 1, "back": 0},
+  {"id": 26000068, "name": "Battle Healer", "cost": 4, "slug": "battle-healer", "h": "KdwXcoigS2Kg-cgA7BJJIANbUJG6SNgjetRQ-MegZ08", "evo": 0, "hero": 0, "champ": 0, "rar": "rare", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000069, "name": "Skeleton King", "cost": 4, "slug": "skeleton-king", "h": "dCd69_wN9f8DxwuqOGtR4QgWhHIPIaTNxZ1e23RzAAc", "evo": 0, "hero": 0, "champ": 1, "rar": "champion", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000072, "name": "Archer Queen", "cost": 5, "slug": "archer-queen", "h": "p7OQmOAFTery7zCzlpDdm-LOD1kINTm42AwIHchZfWk", "evo": 0, "hero": 0, "champ": 1, "rar": "champion", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000074, "name": "Golden Knight", "cost": 4, "slug": "golden-knight", "h": "WJd207D0O1sN-l1FTb8P9KhYL2oF5jY26vRUfTUW3FQ", "evo": 0, "hero": 0, "champ": 1, "rar": "champion", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000077, "name": "Monk", "cost": 5, "slug": "monk", "h": "2onG4t4-CxqwFVZAn6zpWxFz3_mG2ksSj4Q7zldo1SM", "evo": 0, "hero": 0, "champ": 1, "rar": "champion", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000080, "name": "Skeleton Dragons", "cost": 4, "slug": "skeleton-dragons", "h": "qPOtg9uONh47_NLxGhhFc_ww9PlZ6z3Ry507q1NZUXs", "evo": 0, "hero": 0, "champ": 0, "rar": "common", "t": 1, "air": 1, "siege": 0, "back": 0},
+  {"id": 26000083, "name": "Mother Witch", "cost": 4, "slug": "mother-witch", "h": "fO-Xah8XZkYKaSK9SCp3wnzwxtvIhun9NVY-zzte1Ng", "evo": 0, "hero": 0, "champ": 0, "rar": "legendary", "t": 1, "air": 0, "siege": 0, "back": 1},
+  {"id": 26000084, "name": "Electro Spirit", "cost": 1, "slug": "electro-spirit", "h": "WKd4-IAFsgPpMo7dDi9sujmYjRhOMEWiE07OUJpvD9g", "evo": 0, "hero": 0, "champ": 0, "rar": "common", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000085, "name": "Electro Giant", "cost": 7, "slug": "electro-giant", "h": "_uChZkNHAMq6tPb3v6A49xinOe3CnhjstOhG6OZbPYc", "evo": 0, "hero": 0, "champ": 0, "rar": "epic", "t": 1, "air": 0, "siege": 1, "back": 0},
+  {"id": 26000087, "name": "Phoenix", "cost": 4, "slug": "phoenix", "h": "i0RoY1fs6ay7VAxyFEfZGIPnD002nAKcne9FtJsWBHM", "evo": 0, "hero": 0, "champ": 0, "rar": "legendary", "t": 1, "air": 1, "siege": 0, "back": 1},
+  {"id": 26000093, "name": "Little Prince", "cost": 3, "slug": "little-prince", "h": "dY-gSseki6KBpkIG17safHH5YlB8SErFZO9OXbJxf9w", "evo": 0, "hero": 0, "champ": 1, "rar": "champion", "t": 1, "air": 0, "siege": 0, "back": 1},
+  {"id": 26000095, "name": "Goblin Demolisher", "cost": 4, "slug": "goblin-demolisher", "h": "KVVOgdn40xasFLYuQv8Go_U_LCV7wSG9q9eE1H7f3Qk", "evo": 0, "hero": 0, "champ": 0, "rar": "rare", "t": 1, "air": 0, "siege": 1, "back": 0},
+  {"id": 26000096, "name": "Goblin Machine", "cost": 5, "slug": "goblin-machine", "h": "-iLlotr6GCFndL_1BSBqWBb6DnsHBhLerd5EblZDNfU", "evo": 0, "hero": 0, "champ": 0, "rar": "legendary", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000097, "name": "Suspicious Bush", "cost": 2, "slug": "suspicious-bush", "h": "vqTzGAjseQv9F5rf4tsFWeocvg0dyPw1j_nB1cmDZfI", "evo": 0, "hero": 0, "champ": 0, "rar": "rare", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000099, "name": "Goblinstein", "cost": 5, "slug": "goblinstein", "h": "mQ20B49dXdk7Nv0lMdLw175M3YvkSpN6KNnho8UKBd8", "evo": 0, "hero": 0, "champ": 1, "rar": "champion", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000101, "name": "Rune Giant", "cost": 4, "slug": "rune-giant", "h": "UogMnGHQXT-TOVXRxslKdAKXUPhqUvrD_hV9x8lbzdE", "evo": 0, "hero": 0, "champ": 0, "rar": "epic", "t": 1, "air": 0, "siege": 1, "back": 0},
+  {"id": 26000102, "name": "Berserker", "cost": 2, "slug": "berserker", "h": "NA6W8S1JBYBlOPwD3dNvJLFvVDKq-UuBs_J3i3ewLFI", "evo": 0, "hero": 1, "champ": 0, "rar": "common", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000103, "name": "Boss Bandit", "cost": 6, "slug": "boss-bandit", "h": "nuceG9o7rAyvyc7D3sp2QSiRYtSOEgraq0NJkDf729s", "evo": 0, "hero": 0, "champ": 1, "rar": "champion", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000106, "name": "Ronin", "cost": 5, "slug": "ronin", "h": null, "evo": 0, "hero": 0, "champ": 0, "rar": "legendary", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 26000107, "name": "Minion Giant", "cost": 4, "slug": "minion-giant", "h": "VRjL0yVLzrnoe-IBh2l2fDHDok0L-UoM9cG-X_8xbMk", "evo": 0, "hero": 0, "champ": 0, "rar": "rare", "t": 1, "air": 1, "siege": 1, "back": 0},
+  {"id": 27000000, "name": "Cannon", "cost": 3, "slug": "cannon", "h": "nZK1y-beLxO5vnlyUhK6-2zH2NzXJwqykcosqQ1cmZ8", "evo": 1, "hero": 0, "champ": 0, "rar": "common", "t": 3, "air": 0, "siege": 0, "back": 0},
+  {"id": 27000001, "name": "Goblin Hut", "cost": 4, "slug": "goblin-hut", "h": "l8ZdzzNLcwB4u7ihGgxNFQOjCT_njFuAhZr7D6PRF7E", "evo": 0, "hero": 0, "champ": 0, "rar": "rare", "t": 3, "air": 0, "siege": 0, "back": 0},
+  {"id": 27000002, "name": "Mortar", "cost": 4, "slug": "mortar", "h": "lPOSw6H7YOHq2miSCrf7ZDL3ANjhJdPPDYOTujdNrVE", "evo": 1, "hero": 0, "champ": 0, "rar": "common", "t": 3, "air": 0, "siege": 1, "back": 0},
+  {"id": 27000003, "name": "Inferno Tower", "cost": 5, "slug": "inferno-tower", "h": "GSHY_wrooMMLET6bG_WJB8redtwx66c4i80ipi4gYOM", "evo": 0, "hero": 0, "champ": 0, "rar": "rare", "t": 3, "air": 0, "siege": 0, "back": 0},
+  {"id": 27000004, "name": "Bomb Tower", "cost": 4, "slug": "bomb-tower", "h": "rirYRyHPc97emRjoH-c1O8uZCBzPVnToaGuNGusF3TQ", "evo": 0, "hero": 0, "champ": 0, "rar": "rare", "t": 3, "air": 0, "siege": 0, "back": 0},
+  {"id": 27000005, "name": "Barbarian Hut", "cost": 6, "slug": "barbarian-hut", "h": "ho0nOG2y3Ch86elHHcocQs8Fv_QNe0cFJ2CijsxABZA", "evo": 0, "hero": 0, "champ": 0, "rar": "rare", "t": 3, "air": 0, "siege": 0, "back": 0},
+  {"id": 27000006, "name": "Tesla", "cost": 4, "slug": "tesla", "h": "OiwnGrxFMNiHetYEerE-UZt0L_uYNzFY7qV_CA_OxR4", "evo": 1, "hero": 0, "champ": 0, "rar": "common", "t": 3, "air": 0, "siege": 0, "back": 0},
+  {"id": 27000007, "name": "Elixir Collector", "cost": 6, "slug": "elixir-collector", "h": "BGLo3Grsp81c72EpxLLk-Sofk3VY56zahnUNOv3JcT0", "evo": 0, "hero": 0, "champ": 0, "rar": "rare", "t": 3, "air": 0, "siege": 0, "back": 0},
+  {"id": 27000008, "name": "X-Bow", "cost": 6, "slug": "x-bow", "h": "zVQ9Hme1hlj9Dc6e1ORl9xWwglcSrP7ejow5mAhLUJc", "evo": 0, "hero": 0, "champ": 0, "rar": "epic", "t": 3, "air": 0, "siege": 1, "back": 0},
+  {"id": 27000009, "name": "Tombstone", "cost": 3, "slug": "tombstone", "h": "LjSfSbwQfkZuRJY4pVxKspZ-a0iM5KAhU8w-a_N5Z7Y", "evo": 0, "hero": 1, "champ": 0, "rar": "rare", "t": 3, "air": 0, "siege": 0, "back": 0},
+  {"id": 27000010, "name": "Furnace", "cost": 4, "slug": "furnace", "h": "iqbDiG7yYRIzvCPXdt9zPb3IvMt7F7Gi4wIPnh2x4aI", "evo": 1, "hero": 0, "champ": 0, "rar": "rare", "t": 3, "air": 0, "siege": 0, "back": 0},
+  {"id": 27000012, "name": "Goblin Cage", "cost": 4, "slug": "goblin-cage", "h": "vD24bBgK4rSq7wx5QEbuqChtPMRFviL_ep76GwQw1yA", "evo": 1, "hero": 0, "champ": 0, "rar": "rare", "t": 3, "air": 0, "siege": 0, "back": 0},
+  {"id": 27000013, "name": "Goblin Drill", "cost": 4, "slug": "goblin-drill", "h": "eN2TKUYbih-26yBi0xy5LVFOA0zDftgDqxxnVfdIg1o", "evo": 1, "hero": 0, "champ": 0, "rar": "epic", "t": 3, "air": 0, "siege": 0, "back": 0},
+  {"id": 28000000, "name": "Fireball", "cost": 4, "slug": "fireball", "h": "lZD9MILQv7O-P3XBr_xOLS5idwuz3_7Ws9G60U36yhc", "evo": 0, "hero": 0, "champ": 0, "rar": "rare", "t": 2, "air": 0, "siege": 0, "back": 0},
+  {"id": 28000001, "name": "Arrows", "cost": 3, "slug": "arrows", "h": "Flsoci-Y6y8ZFVi5uRFTmgkPnCmMyMVrU7YmmuPvSBo", "evo": 0, "hero": 0, "champ": 0, "rar": "common", "t": 2, "air": 0, "siege": 0, "back": 0},
+  {"id": 28000002, "name": "Rage", "cost": 2, "slug": "rage", "h": "bGP21OOmcpHMJ5ZA79bHVV2D-NzPtDkvBskCNJb7pg0", "evo": 0, "hero": 0, "champ": 0, "rar": "epic", "t": 2, "air": 0, "siege": 0, "back": 0},
+  {"id": 28000003, "name": "Rocket", "cost": 6, "slug": "rocket", "h": "Ie07nQNK9CjhKOa4-arFAewi4EroqaA-86Xo7r5tx94", "evo": 0, "hero": 0, "champ": 0, "rar": "rare", "t": 2, "air": 0, "siege": 0, "back": 0},
+  {"id": 28000004, "name": "Goblin Barrel", "cost": 3, "slug": "goblin-barrel", "h": "CoZdp5PpsTH858l212lAMeJxVJ0zxv9V-f5xC8Bvj5g", "evo": 1, "hero": 0, "champ": 0, "rar": "epic", "t": 2, "air": 0, "siege": 0, "back": 0},
+  {"id": 28000005, "name": "Freeze", "cost": 4, "slug": "freeze", "h": "I1M20_Zs_p_BS1NaNIVQjuMJkYI_1-ePtwYZahn0JXQ", "evo": 0, "hero": 0, "champ": 0, "rar": "epic", "t": 2, "air": 0, "siege": 0, "back": 0},
+  {"id": 28000006, "name": "Mirror", "cost": null, "slug": "mirror", "h": "wC6Cm9rKLEOk72zTsukVwxewKIoO4ZcMJun54zCPWvA", "evo": 0, "hero": 0, "champ": 0, "rar": "epic", "t": 2, "air": 0, "siege": 0, "back": 0},
+  {"id": 28000007, "name": "Lightning", "cost": 6, "slug": "lightning", "h": "fpnESbYqe5GyZmaVVYe-SEu7tE0Kxh_HZyVigzvLjks", "evo": 0, "hero": 0, "champ": 0, "rar": "epic", "t": 2, "air": 0, "siege": 0, "back": 0},
+  {"id": 28000008, "name": "Zap", "cost": 2, "slug": "zap", "h": "7dxh2-yCBy1x44GrBaL29vjqnEEeJXHEAlsi5g6D1eY", "evo": 1, "hero": 0, "champ": 0, "rar": "common", "t": 2, "air": 0, "siege": 0, "back": 0},
+  {"id": 28000009, "name": "Poison", "cost": 4, "slug": "poison", "h": "98HDkG2189yOULcVG9jz2QbJKtfuhH21DIrIjkOjxI8", "evo": 0, "hero": 0, "champ": 0, "rar": "epic", "t": 2, "air": 0, "siege": 0, "back": 0},
+  {"id": 28000010, "name": "Graveyard", "cost": 5, "slug": "graveyard", "h": "Icp8BIyyfBTj1ncCJS7mb82SY7TPV-MAE-J2L2R48DI", "evo": 0, "hero": 0, "champ": 0, "rar": "legendary", "t": 2, "air": 0, "siege": 0, "back": 0},
+  {"id": 28000011, "name": "The Log", "cost": 2, "slug": "the-log", "h": "_iDwuDLexHPFZ_x4_a0eP-rxCS6vwWgTs6DLauwwoaY", "evo": 0, "hero": 0, "champ": 0, "rar": "legendary", "t": 2, "air": 0, "siege": 0, "back": 0},
+  {"id": 28000012, "name": "Tornado", "cost": 3, "slug": "tornado", "h": "QJB-QK1QJHdw4hjpAwVSyZBozc2ZWAR9pQ-SMUyKaT0", "evo": 0, "hero": 0, "champ": 0, "rar": "epic", "t": 2, "air": 0, "siege": 0, "back": 0},
+  {"id": 28000013, "name": "Clone", "cost": 3, "slug": "clone", "h": "mHVCet-1TkwWq-pxVIU2ZWY9_2z7Z7wtP25ArEUsP_g", "evo": 0, "hero": 0, "champ": 0, "rar": "epic", "t": 2, "air": 0, "siege": 0, "back": 0},
+  {"id": 28000014, "name": "Earthquake", "cost": 3, "slug": "earthquake", "h": "XeQXcrUu59C52DslyZVwCnbi4yamID-WxfVZLShgZmE", "evo": 0, "hero": 0, "champ": 0, "rar": "rare", "t": 2, "air": 0, "siege": 0, "back": 0},
+  {"id": 28000015, "name": "Barbarian Barrel", "cost": 2, "slug": "barbarian-barrel", "h": "Gb0G1yNy0i5cIGUHin8uoFWxqntNtRPhY_jeMXg7HnA", "evo": 0, "hero": 1, "champ": 0, "rar": "epic", "t": 2, "air": 0, "siege": 0, "back": 0},
+  {"id": 28000016, "name": "Heal Spirit", "cost": 1, "slug": "heal-spirit", "h": "GITl06sa2nGRLPvboyXbGEv5E3I-wAwn1Eqa5esggbc", "evo": 0, "hero": 0, "champ": 0, "rar": "rare", "t": 1, "air": 0, "siege": 0, "back": 0},
+  {"id": 28000017, "name": "Giant Snowball", "cost": 2, "slug": "giant-snowball", "h": "7MaJLa6hK9WN2_VIshuh5DIDfGwm0wEv98gXtAxLDPs", "evo": 1, "hero": 0, "champ": 0, "rar": "common", "t": 2, "air": 0, "siege": 0, "back": 0},
+  {"id": 28000018, "name": "Royal Delivery", "cost": 3, "slug": "royal-delivery", "h": "LPg7AGjGI3_xmi7gLLgGC50yKM1jJ2teWkZfoHJcIZo", "evo": 0, "hero": 0, "champ": 0, "rar": "common", "t": 2, "air": 0, "siege": 0, "back": 0},
+  {"id": 28000023, "name": "Void", "cost": 5, "slug": "void", "h": "BykyeWDqzn4PlHSszu3NbrXT1mHxW2EA8vHbQGR5LDE", "evo": 0, "hero": 0, "champ": 0, "rar": "epic", "t": 2, "air": 0, "siege": 0, "back": 0},
+  {"id": 28000024, "name": "Goblin Curse", "cost": 2, "slug": "goblin-curse", "h": "OQPfGgT5mHEUvPuKKt0plZT0PNtIjCqUgQ3Rm86dQ2k", "evo": 0, "hero": 0, "champ": 0, "rar": "epic", "t": 2, "air": 0, "siege": 0, "back": 0},
+  {"id": 28000025, "name": "Spirit Empress", "cost": 6, "slug": "spirit-empress", "h": "MWWBZqiQeRBXSqEITVMj46nO_uCIUsqBidvUw9K2twY", "evo": 0, "hero": 0, "champ": 0, "rar": "legendary", "t": 1, "air": 0, "siege": 0, "back": 1},
+  {"id": 28000026, "name": "Vines", "cost": 3, "slug": "vines", "h": "V5sJlPuo2WBRtirJ1lGEPJA4NvQ0KPwFeMrpxLX5z_8", "evo": 0, "hero": 0, "champ": 0, "rar": "epic", "t": 2, "air": 0, "siege": 0, "back": 0}
+];
+
+const CDN = "https://api-assets.clashroyale.com";
+const DEEP_BASE = "clashroyale://copyDeck?deck=";
+const WEB_BASE  = "https://link.clashroyale.com/en/?clashroyale://copyDeck?deck=";
+const LS_DECKS = "cr_decks_v2", LS_DECKS_V1 = "cr_decks_v1", LS_SET = "cr_settings_v1";
+
+const VARIANTS = {
+  evo:   { label: "觉醒", badge: "✦" },   // 有觉醒形态的卡，放在觉醒位就是觉醒
+  hero:  { label: "精英", badge: "✚" },   // 有英雄形态的卡，放在精英位就是精英
+  champ: { label: "英雄", badge: "♛" },   // 冠军卡：本身就是英雄，没有其他形态
+};
+const DEFAULT_RULES = [
+  { evo: true,  hero: false, champ: false },  // 第 1 格：觉醒位
+  { evo: false, hero: true,  champ: true  },  // 第 2 格：精英位 / 英雄位
+  { evo: true,  hero: true,  champ: true  },  // 第 3 格：万能位
+  { evo: false, hero: false, champ: false },
+  { evo: false, hero: false, champ: false },
+  { evo: false, hero: false, champ: false },
+  { evo: false, hero: false, champ: false },
+  { evo: false, hero: false, champ: false },
+];
+const DEFAULT_SETTINGS = {
+  label: "Royals", tt: "159000000", emitSlots: true,
+  codes: { evo: "1", hero: "" },
+  rules: DEFAULT_RULES.map(r => ({ ...r })),
+};
+const SEED_DECKS = [
+  { name: "示例 · 迫击炮", cards: [27000002,26000023,26000022,26000107,26000054,28000000,26000053,28000015] },
+  { name: "示例 · 幽灵战车", cards: [26000036,26000023,26000050,26000020,28000025,26000083,28000000,28000015] },
+];
+
+/* ---------- 基础工具 ---------- */
+const $ = s => document.querySelector(s);
+const byId = new Map(CARDS.map(c => [c.id, c]));
+const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+const STAR_CLS = { "": "silver", evo: "purple", hero: "orange", champ: "orange" };
+function starHtml(v, active, disabled, title){
+  const cls = STAR_CLS[v] || "silver";
+  const tag = (disabled !== undefined) ? "button" : "span";
+  const attrs = (disabled !== undefined)
+    ? `data-v="${v}" ${disabled ? "disabled" : ""}`
+    : "";
+  return `<${tag} class="star ${cls} ${active ? "on" : ""}" ${attrs} title="${escapeHtml(title || (VARIANTS[v] ? VARIANTS[v].label : "普通"))}">★</${tag}>`;
+}
+function badgeHtml(v){
+  if(!v || !VARIANTS[v]) return "";
+  return `<span class="vb ${v}" title="${VARIANTS[v].label}">★</span>`;
+}
+function thumbHtml(cardOrId, v, thumbHint){
+  const id = (cardOrId && typeof cardOrId === "object") ? cardOrId.id : cardOrId;
+  const c = byId.get(id);
+  const vv = v || "";
+  if(!c) return `<div class="t" title="未知卡牌 #${id}"><div style="display:flex;align-items:center;justify-content:center;aspect-ratio:3/4;font-size:10px;color:#889;background:#0a0e26;border-radius:5px">#${id}</div></div>`;
+  const onerr = `if(!this.dataset.f){this.dataset.f=1;this.src='https://cdn.royaleapi.com/static/img/cards-150/${c.slug}.png'}else{this.style.visibility='hidden'}`;
+  const costTxt = (typeof c.cost === "number" ? c.cost : "?");
+  return `<div class="t ${vv}" title="${escapeHtml(c.name)}（${costTxt} 费）${vv ? " · " + VARIANTS[vv].label : ""}${thumbHint ? "\n点击清空这一格" : ""}">
+      ${badgeHtml(vv)}<img loading="lazy" src="${imgOf(c, vv)}" alt="${escapeHtml(c.name)}" onerror="${onerr}"></div>`;
+}
+function imgOf(card, v){
+  if(!card) return "";
+  if(!card.h) return `https://cdn.royaleapi.com/static/img/cards-150/${card.slug}.png`;
+  const dir = v === "evo" ? "cardevolutions" : v === "hero" ? "cardheroes" : "cards";
+  return `${CDN}/${dir}/300/${card.h}.png`;
+}
+/* ---------- 设置 ---------- */
+function loadSettings(){
+  let s = {};
+  try { s = JSON.parse(localStorage.getItem(LS_SET) || "{}") || {}; } catch {}
+  const out = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+  if(typeof s.label === "string" && s.label) out.label = s.label;
+  if(typeof s.tt === "string" && s.tt) out.tt = s.tt;
+  if(typeof s.emitSlots === "boolean") out.emitSlots = s.emitSlots;
+  if(s.codes && typeof s.codes === "object") for(const k of ["evo","hero"]) if(typeof s.codes[k] === "string") out.codes[k] = s.codes[k];
+  if(Array.isArray(s.rules) && s.rules.length === 8) out.rules = s.rules.map(r => ({
+    evo: !!r.evo,
+    hero: !!r.hero,
+    champ: !!(r.champ ?? r.elite)      // 旧版把英雄放在了 elite 字段，迁移过来
+  }));
+  return out;
+}
+function saveSettings(s){
+  try { localStorage.setItem(LS_SET, JSON.stringify(s)); return true; }
+  catch { toast("无法写入浏览器存储：请改用 http(s) 打开页面"); return false; }
+}
+let settings = loadSettings();
+
+function sanitizeVariant(slotIndex, cardId, v){
+  const c = byId.get(cardId);
+  if(c && c.champ) return "";                          // 英雄卡本身就是英雄，不用形态标记
+  if(!v || !VARIANTS[v] || v === "champ") return "";
+  const rule = settings.rules[slotIndex] || {};
+  if(!rule[v]) return "";                              // 位置不允许
+  if(v === "evo"  && !(c && c.evo))  return "";        // 卡本身没有觉醒形态
+  if(v === "hero" && !(c && c.hero)) return "";        // 卡本身没有精英形态
+  return v;
+}
+function slotAccepts(slotIndex, cardId){
+  const c = byId.get(cardId);
+  if(c && c.champ) return !!((settings.rules[slotIndex] || {}).champ);   // 英雄卡只能放英雄位
+  return true;                                                          // 普通卡 8 格都可以
+}
+let repairNotes = [];
+function repairDeckCards(cards){
+  const arr = cards.map(c => ({ ...c }));
+  for(let i = 0; i < arr.length; i++){
+    if(slotAccepts(i, arr[i].id)) continue;
+    for(let j = 0; j < arr.length; j++){
+      if(j === i) continue;
+      if(slotAccepts(j, arr[i].id) && slotAccepts(i, arr[j].id)){
+        const tmp = arr[j]; arr[j] = arr[i]; arr[i] = tmp;
+        const nm = byId.get(arr[j].id);
+        repairNotes.push(`「${nm ? nm.name : arr[j].id}」移到第 ${j + 1} 格（英雄位）`);
+        break;
+      }
+    }
+  }
+  return arr;
+}
+function effectiveVariant(slotIndex, cardId, v){
+  const c = byId.get(cardId);
+  if(c && c.champ) return "champ";                     // 冠军卡永远显示为英雄
+  return sanitizeVariant(slotIndex, cardId, v);
+}
+function champSlotError(slotIndex, cardId){
+  const c = byId.get(cardId);
+  if(!c || !c.champ) return null;
+  const rule = settings.rules[slotIndex] || {};
+  if(rule.champ) return null;
+  const pos = allowedPositions("champ");
+  return `英雄卡（${c.name}）只能放在第 ${pos.join("、")} 格`;
+}
+function allowedPositions(key){
+  return settings.rules.map((r, i) => (r[key] ? i + 1 : null)).filter(Boolean);
+}
+function allowedPositionsText(key){
+  const pos = allowedPositions(key);
+  return pos.length ? `${VARIANTS[key].label}只能放在第 ${pos.join("、")} 格` : `${VARIANTS[key].label}当前没有可用的位置`;
+}
+function rulesSummary(){
+  const out = [];
+  settings.rules.forEach((r, i) => {
+    const forms = ["", ...["evo","hero","champ"].filter(k => r[k])];
+    const key = forms.join("+");
+    const last = out[out.length - 1];
+    if(last && last.key === key && last.end === i) last.end = i + 1;
+    else out.push({ start: i + 1, end: i + 1, key, forms });
+  });
+  return "位置规则：" + out.map(o =>
+    `${o.start === o.end ? o.start : o.start + "-" + o.end} 格 ${o.forms.map(v => starHtml(v, true)).join("")}`
+  ).join(" ｜ ");
+}
+function normDeck(d){
+  let cards = (d.cards || []).map((x, i) => {
+    if(typeof x === "number") return { id: x, v: "" };
+    return { id: x.id, v: sanitizeVariant(i, x.id, x.v) };
+  });
+  cards = repairDeckCards(cards);                                  // 英雄卡自动挪到第 2/3 格
+  cards = cards.map((c, i) => ({ id: c.id, v: sanitizeVariant(i, c.id, c.v) }));
+  return { name: d.name || "未命名卡组", cards };
+}
+function loadDecks(){
+  repairNotes = [];
+  let raw = null;
+  try { raw = JSON.parse(localStorage.getItem(LS_DECKS) || "null"); } catch {}
+  if(Array.isArray(raw)){
+    const out = raw.map(normDeck);
+    if(JSON.stringify(out) !== JSON.stringify(raw)) saveDecks(out);   // 顺带清理非法形态并写回
+    return out;
+  }
+  let v1 = null;
+  try { v1 = JSON.parse(localStorage.getItem(LS_DECKS_V1) || "null"); } catch {}
+  if(Array.isArray(v1) && v1.length) { const out = v1.map(normDeck); saveDecks(out); return out; }
+  const seeded = SEED_DECKS.map(normDeck);
+  saveDecks(seeded);
+  return seeded;
+}
+function notifyRepairs(){
+  if(repairNotes.length){
+    toast("已自动调整：" + repairNotes.slice(0, 2).join("；"));
+    repairNotes = [];
+  }
+}
+function saveDecks(list){
+  try { localStorage.setItem(LS_DECKS, JSON.stringify(list)); return true; }
+  catch { toast("无法写入浏览器存储：请改用 http(s) 打开页面"); return false; }
+}
+let decks = loadDecks();
+
+/* ---------- 链接生成 ---------- */
+function codeOf(v){
+  if(!v) return null;
+  const c = String(settings.codes[v] ?? "").trim();
+  return c === "" ? null : c;
+}
+function buildDeckQuery(deck){
+  const ids = deck.cards.map(c => c.id);
+  let q = ids.join(";");
+  const slots = deck.cards.map((c, i) => {
+    const code = codeOf(effectiveVariant(i, c.id, c.v));  // 只写入合法位置上的形态；英雄卡写入 0
+    return code === null ? "0" : code;
+  });
+  if(settings.emitSlots && slots.some(s => s !== "0")) q += "&slots=" + slots.join(";");
+  q += `&l=${encodeURIComponent(settings.label)}&tt=${encodeURIComponent(settings.tt)}`;
+  return q;
+}
+const webLink  = deck => WEB_BASE  + buildDeckQuery(deck);
+const deepLink = deck => DEEP_BASE + buildDeckQuery(deck);
+const variantSummary = deck => deck.cards.map((c, i) => {
+  const v = effectiveVariant(i, c.id, c.v);
+  return v ? `第 ${i+1} 格 ${starHtml(v, true)}` : null;
+}).filter(Boolean);
+function deckWarnings(deck){
+  return deck.cards.map((c, i) => champSlotError(i, c.id)).filter(Boolean);
+}
+const avgElixir = cards => {
+  const xs = cards.map(c => byId.get(c.id)?.cost).filter(n => typeof n === "number");
+  return xs.length ? (Math.round(xs.reduce((a,b)=>a+b,0)/xs.length*10)/10).toFixed(1) : "?";
+};
+
+/* ---------- 主页 ---------- */
+const decksEl = $("#decks");
+function render(){
+  decksEl.innerHTML = "";
+  decks.forEach((deck, i) => {
+    const el = document.createElement("div");
+    el.className = "deck";
+    el.innerHTML = `
+      <div class="title">${escapeHtml(deck.name)} <span class="avg">平均 ${avgElixir(deck.cards)} 费</span></div>
+      <div class="thumbs">${deck.cards.map((c, i) => thumbHtml(c.id, effectiveVariant(i, c.id, c.v))).join("")}</div>
+      ${deckWarnings(deck).length ? `<div class="warnline">⛔ ${escapeHtml(deckWarnings(deck)[0])}</div>` : ""}
+      <div class="ops">
+        <button class="opbtn edit" data-i="${i}">编辑</button>
+        <button class="opbtn del" data-i="${i}">删除</button>
+      </div>`;
+    el.addEventListener("click", e => {
+      const btn = e.target.closest(".opbtn");
+      if(btn){
+        e.stopPropagation();
+        const idx = Number(btn.dataset.i);
+        if(btn.classList.contains("del")){
+          if(confirm(`删除卡组「${decks[idx].name}」？`)){ decks.splice(idx, 1); saveDecks(decks); render(); toast("已删除"); }
+        } else openEditor(decks[idx]);
+        return;
+      }
+      openDetail(deck);
+    });
+    decksEl.appendChild(el);
+  });
+}
+
+/* ---------- 详情 ---------- */
+let currentDetailDeck = null;
+function openDetail(deck){
+  currentDetailDeck = deck;
+  $("#dTitle").textContent = deck.name;
+  $("#dCards").innerHTML = deck.cards.map(c => {
+    const card = byId.get(c.id);
+    const v = c.v ? ` · <span style="color:var(--${c.v})">${VARIANTS[c.v].label}</span>` : "";
+    return `<div class="c">${thumbHtml(c.id, effectiveVariant(deck.cards.indexOf(c), c.id, c.v))}
+      <div class="nm">${card ? escapeHtml(card.name) : "未知卡牌 #" + c.id}</div>
+      ${card ? `<div class="cost">${typeof card.cost === "number" ? card.cost : "?"} 费${v}</div>` : ""}</div>`;
+  }).join("");
+  const vs = variantSummary(deck);
+  const written = settings.emitSlots && deck.cards.some((c, i) => codeOf(sanitizeVariant(i, c.id, c.v)) !== null);
+  $("#dVariants").innerHTML = vs.length
+    ? `形态：${vs.join("、")}${written ? "（已尝试写入链接）" : "（未写入链接，需游戏内手动设置）"}`
+    : "形态：全部普通卡";
+  const web = webLink(deck), deep = deepLink(deck);
+  $("#openBtn").href = deep;
+  $("#linkText").textContent = web;
+  const warns = deckWarnings(deck);
+  $("#dNote").innerHTML = (warns.length ? `<span style="color:#ffb9c0">⛔ ${escapeHtml(warns[0])}</span><br>` : "")
+    + `<b>提示：</b>导入后在游戏内确认卡组；若形态没有生效，请手动调整（游戏可能忽略链接里的形态信息）。`;
+  const qr = $("#qr"); qr.innerHTML = "";
+  try { new QRCode(qr, { text: web, width: 232, height: 232, correctLevel: QRCode.CorrectLevel.M }); }
+  catch(err){ qr.innerHTML = `<div style="color:#333;font-size:12px;max-width:232px">二维码生成失败：${escapeHtml(err.message)}</div>`; }
+  $("#detail").showModal();
+}
+
+/* ---------- 复制 / 提示 ---------- */
+async function copyText(t){
+  try { await navigator.clipboard.writeText(t); toast("已复制到剪贴板"); return; } catch {}
+  const ta = document.createElement("textarea");
+  ta.value = t; ta.style.position = "fixed"; ta.style.opacity = "0";
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand("copy"); toast("已复制到剪贴板"); } catch { toast("复制失败，请手动选择文本复制"); }
+  ta.remove();
+}
+let toastTimer = null;
+function toast(msg){
+  const t = $("#toast"); t.textContent = msg; t.classList.add("on");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("on"), 2000);
+}
+
+/* ---------- 编辑器 ---------- */
+let editingIndex = -1;
+let selection = new Array(8).fill(null);   // 8 个格子，null = 空
+let activeSlot = -1;                       // 点选的空格（用来指定把卡放进哪一格）
+
+const isChampId = id => { const c = byId.get(id); return !!(c && c.champ); };
+const canPlace = (slotIndex, cardId) => slotAccepts(slotIndex, cardId);
+function slotAllowLabel(i){
+  const r = settings.rules[i] || {};
+  const names = ["evo","hero","champ"].filter(k => r[k]).map(k => VARIANTS[k].label);
+  return names.length ? names.join("/") : "普通";
+}
+function firstFreeSlotFor(cardId){
+  for(let i = 0; i < 8; i++) if(!selection[i] && canPlace(i, cardId)) return i;
+  return -1;
+}
+function cannotJoinMsg(cardId){
+  const c = byId.get(cardId);
+  const name = c ? c.name : ("#" + cardId);
+  if(isChampId(cardId)){
+    const pos = allowedPositions("champ");
+    const free = pos.filter(p => !selection[p - 1]);
+    return free.length
+      ? `⛔ 无法加入：${name} 只能放在第 ${pos.join("、")} 格`
+      : `⛔ 无法加入：第 ${pos.join("、")} 格（英雄位）已被占用`;
+  }
+  return `⛔ 无法加入：${name} 没有可用位置（卡组已满）`;
+}
+
+function openEditor(deck){
+  editingIndex = deck ? decks.indexOf(deck) : -1;
+  selection = new Array(8).fill(null);
+  if(deck) deck.cards.slice(0, 8).forEach((c, i) => { selection[i] = { id: c.id, v: c.v || "" }; });
+  activeSlot = -1;
+  $("#eTitle").textContent = deck ? "编辑卡组" : "添加卡组";
+  $("#eName").value = deck ? deck.name : "";
+  $("#ePaste").value = "";
+  $("#eSearch").value = "";
+  renderPicker();
+  $("#editor").showModal();
+}
+
+function renderPicker(){
+  const count = selection.filter(Boolean).length;
+  $("#eCount").textContent = count;
+  $("#eSel").innerHTML = selection.map((c, i) => {
+    const rule = settings.rules[i] || {};
+    const hintForms = [];
+    if(rule.evo) hintForms.push("evo");
+    if(rule.hero || rule.champ) hintForms.push("hero");     // 精英/英雄同为橙星，只显示一个
+    hintForms.push("");                                     // 银星（普通）永远最后
+    const hintStars = hintForms.map(v => starHtml(v, v === "")).join("");
+    if(!c){
+      return `<div class="s empty ${i === activeSlot ? "active" : ""}" data-i="${i}"
+                   title="第 ${i+1} 格（可放普通卡${rule.evo ? " / 觉醒" : ""}${(rule.hero || rule.champ) ? " / 精英·英雄" : ""}）：点一下选中，再点下面的卡片放进来">
+        <div class="ph">＋</div><span class="idx">${i+1}</span>
+        <div class="starbar">${hintStars}</div></div>`;
+    }
+    const card = byId.get(c.id);
+    const cur = effectiveVariant(i, c.id, c.v);
+    let stars;
+    if(card && card.champ){
+      stars = starHtml("champ", true, undefined, "英雄卡本身就是英雄，没有其他形态");
+    } else if(!(card && (card.evo || card.hero))){
+      stars = starHtml("", true, undefined, "该卡没有觉醒 / 精英形态，只能是普通卡");
+    } else {
+      const mk = (key, label) => {
+        const ok = !!rule[key];
+        const title = ok ? label : `${label}：${allowedPositionsText(key)}`;
+        return starHtml(key, cur === key, !ok, title);
+      };
+      stars = (card.evo ? mk("evo", "觉醒") : "") +
+        (card.hero ? mk("hero", "精英") : "") +
+        starHtml("", cur === "", false);
+    }
+    return `<div class="s ${i === activeSlot ? "active" : ""}" data-i="${i}">
+      ${thumbHtml(c.id, cur, true)}
+      <span class="idx">${i+1}</span>
+      <div class="starbar" data-i="${i}">${stars}</div>
+      <div class="mvbar">
+        <button class="mv" data-i="${i}" data-dir="-1" title="左移">◀</button>
+        <button class="mv" data-i="${i}" data-dir="1" title="右移">▶</button>
+      </div>
+    </div>`;
+  }).join("");
+  $("#eRules").innerHTML = selection.some(Boolean) ? rulesSummary() : "";
+
+  renderChips();
+  const q = $("#eSearch").value.trim().toLowerCase();
+  $("#eGrid").innerHTML = gridList()
+    .filter(c => !q || c.name.toLowerCase().includes(q))
+    .map(c => {
+      const si = selection.findIndex(s => s && s.id === c.id);
+      return `<div class="c ${si >= 0 ? "sel" : ""}" data-id="${c.id}">
+        ${si >= 0 ? `<span class="ck">${si + 1}</span>` : ""}
+        <img loading="lazy" src="${imgOf(c)}" alt="${escapeHtml(c.name)}" title="${escapeHtml(c.name)}（${typeof c.cost === "number" ? c.cost : "?"} 费）${c.champ ? " · 英雄卡" : ""}">
+        <div class="cn">${escapeHtml(c.name)}</div></div>`;
+    }).join("");
+
+  $("#eHint").innerHTML = count < 8
+    ? `还差 ${8 - count} 张卡。点卡片加入（放不了会直接提示「无法加入」）；先点某个空格可以指定放哪一格。<br>
+       <span class="star silver">★</span> 普通（每格都能放）　<span class="star purple">★</span> 觉醒（第 1、3 格）　<span class="star orange">★</span> 精英 / 英雄（第 2、3 格）`
+    : `8 张已满。点格子里的星标可以切换形态：<span class="star silver">★</span> 普通　<span class="star purple">★</span> 觉醒　<span class="star orange">★</span> 精英　（不能选的星标是灰的）`;
+}
+
+const FILTERS = { type: 0, air: false, siege: false, back: false, evo: false, hero: false, champ: false };
+let sortMode = "id";
+const TYPE_NAME = { 1: "部队", 2: "法术", 3: "建筑" };
+function matchFilter(c){
+  if(FILTERS.type && c.t !== FILTERS.type) return false;
+  if(FILTERS.air && !c.air) return false;
+  if(FILTERS.siege && !c.siege) return false;
+  if(FILTERS.back && !c.back) return false;
+  if(FILTERS.evo && !c.evo) return false;
+  if(FILTERS.hero && !c.hero) return false;
+  if(FILTERS.champ && !c.champ) return false;
+  return true;
+}
+function gridList(){
+  const list = CARDS.filter(matchFilter);
+  const cost = c => (typeof c.cost === "number" ? c.cost : 0);
+  const by = {
+    id: (a, b) => a.id - b.id,
+    costAsc: (a, b) => cost(a) - cost(b) || a.id - b.id,
+    costDesc: (a, b) => cost(b) - cost(a) || a.id - b.id,
+    name: (a, b) => a.name.localeCompare(b.name),
+    evo: (a, b) => b.evo - a.evo || a.id - b.id,
+    hero: (a, b) => b.hero - a.hero || a.id - b.id,
+    champ: (a, b) => b.champ - a.champ || a.id - b.id,
+  }[sortMode] || ((a, b) => a.id - b.id);
+  return [...list].sort(by);
+}
+function renderChips(){
+  const chip = (key, label, icon, on) =>
+    `<span class="chip ${on ? "on" : ""}" data-f="${key}">${icon ? `<span class="dot">${icon}</span> ` : ""}${label}</span>`;
+  const chips = [
+    chip("type:0", "全部", "", FILTERS.type === 0),
+    chip("type:1", "部队", "", FILTERS.type === 1),
+    chip("type:2", "法术", "", FILTERS.type === 2),
+    chip("type:3", "建筑", "", FILTERS.type === 3),
+    chip("air", "空中单位", "☁", FILTERS.air),
+    chip("siege", "攻城（只打建筑）", "⌂", FILTERS.siege),
+    chip("back", "后排 / 远程支援", "◎", FILTERS.back),
+    chip("evo", "可觉醒", "★", FILTERS.evo),
+    chip("hero", "可精英", "★", FILTERS.hero),
+    chip("champ", "英雄卡", "★", FILTERS.champ),
+  ];
+  $("#eChips").innerHTML = chips.join("");
+}
+
+function moveSlot(i, dir){
+  const j = i + dir;
+  if(j < 0 || j > 7) return;
+  const a = selection[i];
+  if(!a) return;
+  if(!canPlace(j, a.id)){
+    const card = byId.get(a.id);
+    toast(`⛔ 无法移动：${card ? card.name : "该卡"} 只能放在第 ${allowedPositions("champ").join("、")} 格`);
+    return;
+  }
+  selection[i] = selection[j];
+  selection[j] = a;
+  revalidateSelection();
+  renderPicker();
+}
+
+function revalidateSelection(){
+  const dropped = [];
+  selection = selection.map((c, i) => {
+    if(!c) return null;
+    const v = sanitizeVariant(i, c.id, c.v);
+    if(c.v && !v) dropped.push(`第 ${i+1} 格`);
+    return { id: c.id, v };
+  });
+  if(dropped.length) toast(`已取消不合法的形态（${dropped.join("、")}）`);
+}
+
+function toggleCard(id){
+  const idx = selection.findIndex(s => s && s.id === id);
+  if(idx >= 0){                                    // 再点一次 = 移除
+    selection[idx] = null;
+    if(activeSlot === idx) activeSlot = -1;
+    revalidateSelection(); renderPicker(); return;
+  }
+  const target = (activeSlot >= 0 && !selection[activeSlot]) ? activeSlot : firstFreeSlotFor(id);
+  if(target < 0 || !canPlace(target, id)){         // 放不了 -> 直接拒绝
+    toast(cannotJoinMsg(id));
+    return;
+  }
+  selection[target] = { id, v: "" };
+  const card = byId.get(id);
+  if(card && card.champ) toast(`「${card.name}」已放入第 ${target+1} 格（英雄位）`);
+  activeSlot = -1;
+  revalidateSelection(); renderPicker();
+}
+
+function fillSelection(ids){
+  selection = new Array(8).fill(null);
+  activeSlot = -1;
+  const failed = [];
+  for(const id of ids){
+    const slot = firstFreeSlotFor(id);
+    if(slot < 0){ failed.push(id); continue; }
+    selection[slot] = { id, v: "" };
+  }
+  revalidateSelection(); renderPicker();
+  if(failed.length) toast("⛔ 无法加入：" + failed.map(id => (byId.get(id) || {}).name || ("#" + id)).join("、"));
+  else if(ids.length === 8) toast("已解析 8 张卡");
+  else if(ids.length) toast(`解析到 ${ids.length} 张有效卡，请补选`);
+}
+
+function parseDeckText(text){
+  const out = [];
+  const m = text.match(/deck=([\d;%B]+)/i);
+  const src = m ? decodeURIComponent(m[1]) : text;
+  for(const tok of src.split(/[^\d]+/)){
+    if(/^\d{6,}$/.test(tok)){
+      const id = Number(tok);
+      if(byId.has(id) && !out.includes(id)) out.push(id);
+    }
+    if(out.length === 8) break;
+  }
+  return out;
+}
+
+/* ---------- 设置界面 ---------- */
+function openSettings(){
+  $("#sLabel").value = settings.label;
+  $("#sTt").value = settings.tt;
+  $("#sEmit").checked = settings.emitSlots;
+  $("#sEvo").value = settings.codes.evo;
+  $("#sHero").value = settings.codes.hero;
+  $("#sRules").innerHTML = settings.rules.map((r, i) => `<tr>
+      <td class="pos">第 ${i+1} 格</td>
+      <td><input type="checkbox" checked disabled title="普通卡 8 个格子都能放"></td>
+      <td><input type="checkbox" data-i="${i}" data-k="evo" ${r.evo ? "checked" : ""}></td>
+      <td><input type="checkbox" data-i="${i}" data-k="hero" ${r.hero ? "checked" : ""}></td>
+      <td><input type="checkbox" data-i="${i}" data-k="champ" ${r.champ ? "checked" : ""}></td>
+    </tr>`).join("");
+  refreshDataView();
+  $("#settings").showModal();
+}
+function refreshDataView(){
+  const view = decks.map(d => ({
+    name: d.name,
+    cards: d.cards.map((c, i) => {
+      const card = byId.get(c.id);
+      const v = sanitizeVariant(i, c.id, c.v);
+      return `${i+1}. ${card ? card.name : "#" + c.id} (${c.id})${v ? " [" + VARIANTS[v].label + "]" : ""}`;
+    }),
+  }));
+  $("#sData").value = JSON.stringify(view, null, 1);
+}
+function readSettingsForm(){
+  const s = JSON.parse(JSON.stringify(settings));
+  s.label = $("#sLabel").value.trim() || "Royals";
+  s.tt = $("#sTt").value.trim() || "159000000";
+  s.emitSlots = $("#sEmit").checked;
+  s.codes = { evo: $("#sEvo").value.trim(), hero: $("#sHero").value.trim() };
+  $("#sRules").querySelectorAll("input[type=checkbox]").forEach(cb => {
+    s.rules[Number(cb.dataset.i)][cb.dataset.k] = cb.checked;
+  });
+  return s;
+}
+
+/* ---------- 事件 ---------- */
+document.addEventListener("click", e => {
+  const g = e.target.closest("#eGrid .c");
+  if(g){ toggleCard(Number(g.dataset.id)); return; }
+  const slotEl = e.target.closest("#eSel .s");
+  if(slotEl && slotEl.classList.contains("empty")){
+    const i = Number(slotEl.dataset.i);
+    activeSlot = (activeSlot === i) ? -1 : i;
+    renderPicker();
+    return;
+  }
+  const mv = e.target.closest("#eSel .mv");
+  if(mv){ moveSlot(Number(mv.dataset.i), Number(mv.dataset.dir)); return; }
+  const thumb = e.target.closest("#eSel .s .t");
+  if(thumb){                                  // 再点一次格子里的卡 = 清空该格
+    const i = Number(thumb.closest(".s").dataset.i);
+    selection[i] = null;
+    if(activeSlot === i) activeSlot = -1;
+    revalidateSelection(); renderPicker();
+    return;
+  }
+});
+document.addEventListener("click", e => {
+  const st = e.target.closest("#eSel .star");
+  if(!st) return;
+  if(st.disabled || st.tagName !== "BUTTON") return;      // 灰色星标不可点
+  const i = Number(st.closest(".starbar").dataset.i);
+  if(!selection[i]) return;
+  selection[i].v = st.dataset.v;                          // "" / "evo" / "hero"
+  revalidateSelection();
+  renderPicker();
+});
+$("#eSearch").addEventListener("input", renderPicker);
+$("#eSort").addEventListener("change", e => { sortMode = e.target.value; renderPicker(); });
+$("#eChips").addEventListener("click", e => {
+  const chip = e.target.closest(".chip");
+  if(!chip) return;
+  const f = chip.dataset.f;
+  if(f.startsWith("type:")){ FILTERS.type = Number(f.slice(5)); }
+  else { FILTERS[f] = !FILTERS[f]; }
+  renderPicker();
+});
+$("#ePaste").addEventListener("input", () => {
+  const ids = parseDeckText($("#ePaste").value);
+  if(ids.length) fillSelection(ids);
+});
+$("#eParse").addEventListener("click", () => {
+  const ids = parseDeckText($("#ePaste").value);
+  if(!ids.length){ toast("没解析出卡牌，请检查内容"); return; }
+  fillSelection(ids);
+});
+$("#eSave").addEventListener("click", () => {
+  const name = $("#eName").value.trim() || ("卡组 " + (decks.length + 1));
+  const filled = selection.filter(Boolean);
+  if(filled.length !== 8){ toast(`还差 ${8 - filled.length} 张卡，请选满 8 张`); return; }
+  const deck = normDeck({ name, cards: selection.map(c => ({ id: c.id, v: c.v })) });
+  if(editingIndex >= 0) decks[editingIndex] = deck; else decks.push(deck);
+  saveDecks(decks); render(); $("#editor").close(); toast("已保存");
+});
+$("#settingsBtn").addEventListener("click", openSettings);
+$("#sSave").addEventListener("click", () => {
+  settings = readSettingsForm();
+  decks = decks.map(normDeck);            // 规则变化后清掉不合法位置上的形态
+  saveDecks(decks);
+  if(saveSettings(settings)){ toast("设置已保存"); $("#settings").close(); render(); }
+});
+$("#sReset").addEventListener("click", () => {
+  settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+  saveSettings(settings);
+  decks = decks.map(normDeck);
+  saveDecks(decks);
+  openSettings(); render(); toast("已恢复默认设置");
+});
+$("#sSeed").addEventListener("click", () => {
+  SEED_DECKS.map(normDeck).forEach(d => decks.push(d));
+  saveDecks(decks); render(); $("#settings").close(); toast("示例卡组已添加");
+});
+$("#sRefresh").addEventListener("click", refreshDataView);
+$("#sClear").addEventListener("click", () => {
+  if(!confirm(`清空全部 ${decks.length} 套卡组？（不可恢复）`)) return;
+  decks = []; saveDecks(decks); render(); refreshDataView(); toast("已清空");
+});
+$("#addBtn").addEventListener("click", () => openEditor(null));
+$("#copyBtn").addEventListener("click", () => currentDetailDeck && copyText(webLink(currentDetailDeck)));
+$("#copyDeepBtn").addEventListener("click", () => currentDetailDeck && copyText(deepLink(currentDetailDeck)));
+document.querySelectorAll("[data-close]").forEach(b => b.addEventListener("click", () => $("#" + b.dataset.close).close()));
+
+const APP_VERSION = "v6 · 2026-09-13";
+$("#ver").textContent = "版本 " + APP_VERSION;
+console.log("cr-copy-deck", APP_VERSION);
+
+render();
+notifyRepairs();
+</script>
+</body>
+</html>
