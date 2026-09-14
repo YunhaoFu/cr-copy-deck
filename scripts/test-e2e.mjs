@@ -128,6 +128,17 @@ async function checkSoon(page, fn, name, timeout = 12000) {
   return check(name, false, "超时，当前值 " + JSON.stringify(got));
 }
 
+/** 等账号弹窗里出现某段文案（用于"等一次请求失败"这类没有正向信号的场景） */
+async function waitMsg(page, needle, timeout = 20000) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < timeout) {
+    const t = await page.$eval("#acctMsg", e => e.textContent).catch(() => "");
+    if (t.includes(needle)) return t;
+    await sleep(200);
+  }
+  return "";
+}
+
 /* ---------------- 流程 ---------------- */
 
 async function waitForServer() {
@@ -206,9 +217,12 @@ try {
   check("4.1b 登录表单内容与预期一致", formB.u === USER && formB.p === PASS, JSON.stringify(formB));
   await B.page.click("#acctGo");
   await B.page.waitForFunction(() => SYNC.phase() === "on", { timeout: 20000 });
-  await sleep(600);
-  const onB = await deckNames(B.page);
-  check("4.2 设备B 登录后自动拉到云端的卡组", onB.length === 1 && onB[0] === "2.6 猪", JSON.stringify(onB));
+  // 不能用固定 sleep 断言：登录成功只代表拿到会话，首次拉取还在路上。
+  // 跑线上时一次请求要好几秒（走代理），等条件成立才靠谱。
+  await checkSoon(B.page, () => decks.length === 1 && decks[0].name === "2.6 猪", "4.2 设备B 登录后自动拉到云端的卡组");
+  const onB = await B.page.evaluate(() => decks.map(d => ({ name: d.name, n: d.cards.length, tower: d.tower })));
+  check("4.3 拉下来的卡组内容完整（8 张卡 + 塔防）",
+    onB[0]?.n === 8 && onB[0]?.tower === 159000000, JSON.stringify(onB));
 
   section("5 设备B 改名 → 设备A 收到（且不会变成两套）");
   await B.page.evaluate(() => { activeTab = "1v1"; render(); });
@@ -255,10 +269,14 @@ try {
   const c8 = await cloud(A.page);
   check("8.1 云端卡组已空", c8.decks.length === 0);
   check("8.2 云端留下墓碑", c8.tombstones.some(t => t.id === deckId), JSON.stringify(c8.tombstones));
+  // 先记下 B 当前已同步到的时间点，刷新后等它前进 —— 否则"列表为空"在拉取完成前就已经成立了，
+  // 断言会变成假阳性
+  const beforeSync = await B.page.evaluate(() => SYNC._state().lastSyncAt);
+  await B.page.evaluate(v => { window.__beforeSync = v; }, beforeSync);
   await B.page.reload({ waitUntil: "domcontentloaded" });
   await B.page.waitForFunction(() => typeof SYNC !== "undefined", { timeout: 15000 });
   await B.page.waitForFunction(() => SYNC.phase() === "on", { timeout: 20000 });
-  await sleep(800);
+  await checkSoon(B.page, () => SYNC._state().lastSyncAt > (window.__beforeSync || 0), "8.3a 设备B 刷新后完成一次拉取");
   check("8.3 设备B 刷新后卡组也被删掉（没有被本地旧数据复活）",
     (await deckNames(B.page)).length === 0, JSON.stringify(await deckNames(B.page)));
 
@@ -331,16 +349,14 @@ try {
   await D.page.waitForSelector("#acct[open]", { timeout: 5000 });
   await fillAcct(D.page, { user: USER, pass: PASS });
   await D.page.click("#acctGo");
-  await sleep(2500);
-  const oldPwRejected = await D.page.$eval("#acctMsg", e => e.className.includes("err") && e.textContent.includes("不正确")).catch(() => false);
-  check("10.3 旧密码已失效", oldPwRejected);
+  const oldPwMsg = await waitMsg(D.page, "不正确");
+  check("10.3 旧密码已失效", oldPwMsg.includes("不正确"), oldPwMsg || "等不到错误提示");
 
   section("11 错误提示 / 用新密码登录");
   await D.page.evaluate(() => { document.querySelector("#acctPass").value = "stillwrong"; });
   await D.page.click("#acctGo");
-  await sleep(1500);
-  const errShown = await D.page.$eval("#acctMsg", e => e.className.includes("err") && e.textContent.includes("不正确")).catch(() => false);
-  check("11.1 密码错误时给出中文提示", errShown);
+  const errMsg = await waitMsg(D.page, "不正确");
+  check("11.1 密码错误时给出中文提示", errMsg.includes("不正确"), errMsg || "等不到错误提示");
   check("11.2 密码错误不会登录", await phase(D.page) === "anon", await phase(D.page));
   await D.page.evaluate(() => { document.querySelector("#acctPass").value = "newpass123"; });
   await D.page.click("#acctGo");
