@@ -1,7 +1,0 @@
-{
-  "name": "cr-copy-deck",
-  "compatibility_date": "2026-09-14",
-  "assets": {
-    "directory": "./dist"
-  }
-}

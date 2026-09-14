@@ -1,4 +1,4 @@
-name: Validate static site
+name: Validate site + API
 
 on:
   push:
@@ -15,7 +15,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
+      # 单文件站点：静态校验（单文件自包含 / 卡池与卡组数据 / 主题 / 账号与同步挂点）
       - run: node scripts/validate.mjs
+      # 构建产物：dist/index.html + dist/_routes.json
       - run: node scripts/build-site.mjs
       - run: test -f dist/index.html
+      - run: test -f dist/_routes.json
+      # 后端：用 node:sqlite 顶替 D1，把 functions/api/* 真正跑一遍
+      - run: node scripts/test-api.mjs

@@ -10,10 +10,11 @@
  *   E. 内置卡组数据不变量（120 套、无重复、形态只在合法槽位）
  *   F. 筛选名单与卡池标记一致
  *   G. 版本号存在、无敏感串
+ *   H. 账号与云同步（客户端挂点 / 服务端 Functions / 路由 / 迁移）
  *
  * 用法：node scripts/validate.mjs
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -59,7 +60,10 @@ check(!/<script[^>]+\bsrc=/i.test(html), "没有外部 <script src>");
 check(!/<link[^>]+rel=["']?stylesheet/i.test(html), "没有外部样式表");
 check(!/<base\b/i.test(html), "没有 <base>（否则 file:// 双击会坏）");
 check(!/\b(?:src|href)=["']\.\//.test(html), "没有本地相对资源路径");
-check(!/(^|[^.\w])location\./.test(html), "不依赖 location（无 origin/协议分支）");
+check(!/location\.(origin|href|host|hostname|pathname|search)/.test(html),
+  "不使用 location.origin/href（file:// 下会算错链接）");
+check(/location\.protocol !== "http:" && location\.protocol !== "https:"/.test(html),
+  "只在 http(s) 下启用云同步（file:// 直接判离线）");
 check(!/serviceWorker/.test(html), "没有 Service Worker（保持单文件可离线双击）");
 
 /* ---------- B. 关键钩子 ---------- */
@@ -129,9 +133,84 @@ check(META_SPELLS.length === 21 && META_SPELLS.slice().sort((a, b) => a - b).joi
 section("G. 版本与敏感信息");
 const ver = html.match(/const APP_VERSION = "([^"]+)"/);
 check(!!ver && /^v\d/.test(ver[1]), "APP_VERSION 存在且形如 v6 · 日期", ver ? ver[1] : "缺失");
-for (const pat of ["api_key", "token=", "secret", "Bearer ", "password", "access_key"]) {
+for (const pat of ["api_key", "token=", "secret", "Bearer ", "access_key"]) {
   check(!html.includes(pat), `无敏感串「${pat}」`);
 }
+// 现在页面里有密码输入框，所以不能在字面量上找 "password"，改为找「写死的密码值」
+check(!/(^|[^_\w])password\s*:\s*["'][^"']/.test(html), "没有写死的密码值");
+check(!/PASSWORD_PEPPER|SESSION_PEPPER|CR_DB/.test(html), "index.html 里不含任何服务端密钥 / 绑定名");
+
+/* ---------- H. 账号与云同步 ---------- */
+section("H. 账号与云同步");
+
+// H1 客户端挂点：三处本地写入都必须通知同步模块
+for (const [fn, kind] of [["saveDecks", "decks"], ["saveSettings", "settings"], ["applyTheme", "theme"]]) {
+  const re = new RegExp(`function ${fn}\\([^)]*\\)\\{[\\s\\S]{0,1200}?notifyLocalChange\\(\"${kind}\"\\)`);
+  check(re.test(html), `${fn}() 内调用 notifyLocalChange("${kind}")`);
+}
+check(html.includes("const SYNC = (() => {"), "SYNC 模块存在");
+for (const s of ["boot", "flush", "schedule"]) {
+  check(new RegExp(`\\b${s}\\b`).test(html), `SYNC 暴露 ${s}()`);
+}
+
+// H2 卡组 id / updatedAt —— 云同步的对齐键，缺了就会「删旧建新」
+check(/const DECK_ID_RE = /.test(html) && /function newDeckId\(/.test(html), "卡组有客户端生成的 id");
+check(/typeof d\.id === "string" && DECK_ID_RE\.test\(d\.id\)/.test(html), "normDeck 保留已有 id");
+check(/const updatedAt = Number\.isFinite\(ua\)/.test(html), "normDeck 保留 / 补全 updatedAt");
+check(/id: prev \? prev\.id : undefined/.test(html), "编辑已有卡组时保留原 id");
+
+// H3 账号 / 合并弹窗的 DOM
+for (const id of ["acctBtn", "acct", "acctUser", "acctPass", "acctPass2", "acctRc", "acctGo",
+                  "acctForgot", "acctLogout", "acctDelete", "acctSync", "mergeDlg", "acctMsg"]) {
+  check(html.includes(`id="${id}"`), `#${id} 存在`);
+}
+for (const kind of ["merge", "pull", "push"]) {
+  check(html.includes(`data-merge="${kind}"`), `合并窗有「${kind}」选项`);
+}
+check(!/setTimeout\(\(\) => \$\("#acctUser"\)\.focus\(\)/.test(html),
+  "没有用 setTimeout 抢焦点（会打断用户输入）");
+check(html.includes('id="acctUser" autofocus'), "用户名输入框用原生 autofocus");
+
+// H4 错误文案必须是中文
+for (const t of ["用户名或密码不正确", "这个用户名已经有人用了", "密码至少 6 位", "云同步暂时不可用"]) {
+  check(html.includes(t), `有中文提示「${t}」`);
+}
+
+// H5 服务端 Functions
+check(existsSync(join(root, "functions/_lib/store.js")), "functions/_lib/store.js 存在");
+const storeSrc = readFileSync(join(root, "functions/_lib/store.js"), "utf8");
+check(/PBKDF2/.test(storeSrc), "密码用 PBKDF2 派生");
+check(/HttpOnly/.test(storeSrc) && /Secure/.test(storeSrc) && /SameSite=Lax/.test(storeSrc),
+  "会话 Cookie 带 HttpOnly / Secure / SameSite");
+check(/max_age|Max-Age/i.test(storeSrc) || /Max-Age/.test(storeSrc), "会话 Cookie 设置了有效期");
+check(/ctEqual/.test(storeSrc), "哈希比较用定长比较（防时间侧信道）");
+check(!/console\.log\([^)]*password/i.test(storeSrc), "不打印密码");
+for (const [f, methods] of [
+  ["auth.js", ["onRequestPost"]],
+  ["me.js", ["onRequestGet", "onRequestDelete"]],
+  ["sync.js", ["onRequestGet", "onRequestPut"]],
+]) {
+  const src = readFileSync(join(root, "functions/api", f), "utf8");
+  for (const m of methods) check(src.includes(`export async function ${m}`), `api/${f} 导出 ${m}`);
+  check(/storage_not_configured/.test(src) || /notConfigured\(/.test(src),
+    `api/${f} 在 D1 未绑定时优雅降级`);
+}
+const syncSrc = readFileSync(join(root, "functions/api/sync.js"), "utf8");
+check(/deleted_at/.test(syncSrc), "同步用墓碑记录删除");
+check(/ON CONFLICT/.test(syncSrc), "写入用 upsert（幂等）");
+check(/MAX_DECKS/.test(syncSrc), "服务端限制单用户卡组数量");
+
+// H6 路由与迁移
+const routes = JSON.parse(readFileSync(join(root, "_routes.json"), "utf8"));
+check(routes.version === 1 && JSON.stringify(routes.include) === '["/api/*"]' && routes.exclude.length === 0,
+  "_routes.json 只把 /api/* 交给 Functions");
+const sql = readFileSync(join(root, "migrations/0001_sync_auth.sql"), "utf8");
+for (const t of ["users", "sessions", "decks", "user_settings", "auth_limits"]) {
+  check(new RegExp(`CREATE TABLE IF NOT EXISTS ${t}\\b`).test(sql), `迁移建表 ${t}`);
+}
+check(/CREATE TABLE IF NOT EXISTS/.test(sql) && (sql.match(/CREATE TABLE IF NOT EXISTS/g) || []).length ===
+  (sql.match(/CREATE TABLE/g) || []).length, "迁移可重复执行（全部 IF NOT EXISTS）");
+check(!/email/i.test(sql), "不收集邮箱等个人信息（只用用户名 + 密码）");
 
 /* ---------- 汇总 ---------- */
 console.log(`\n${failed === 0 ? "✅ 全部校验通过" : `❌ ${failed} 项未通过`}`);

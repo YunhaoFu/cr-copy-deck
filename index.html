@@ -210,6 +210,42 @@ dialog::backdrop{background:rgba(3,6,20,.74);backdrop-filter:blur(3px)}
 .note{margin-top:14px;font-size:12px;color:var(--muted)}
 .note b{color:#ffd479}
 
+/* ---------- 账号 / 云同步 ---------- */
+.acctbtn{flex:0 0 auto;display:inline-flex;align-items:center;gap:7px;background:var(--panel-2);
+      border:1px solid var(--line);color:var(--text);border-radius:999px;padding:8px 14px;font-size:12.5px;
+      font-weight:600;cursor:pointer;transition:.16s;white-space:nowrap;max-width:190px}
+.acctbtn:hover{border-color:var(--gold);background:rgba(245,185,60,.12)}
+.acctbtn .dot{width:7px;height:7px;border-radius:50%;background:#8a93b8;flex:0 0 auto;opacity:.75}
+.acctbtn.on .dot{background:var(--green);opacity:1;animation:syncring 2.6s ease-out infinite}
+.acctbtn.busy .dot{background:var(--gold);opacity:1;animation:syncring 1s ease-out infinite}
+.acctbtn.err .dot{background:var(--red);opacity:1}
+.acctbtn .who{overflow:hidden;text-overflow:ellipsis}
+@keyframes syncring{0%{box-shadow:0 0 0 0 rgba(78,224,138,.5)}70%{box-shadow:0 0 0 7px rgba(78,224,138,0)}100%{box-shadow:0 0 0 0 rgba(78,224,138,0)}}
+.accttabs{display:flex;gap:8px}
+.accttabs button{flex:1;background:var(--panel-2);border:1px solid var(--line);color:var(--muted);
+      border-radius:11px;padding:9px;font-size:13px;font-weight:700;cursor:pointer;transition:.16s}
+.accttabs button.on{background:linear-gradient(180deg,#6b93ff,var(--blue));border-color:transparent;color:#fff}
+.acctform input{width:100%}
+.acctform .flabel{display:block;font-size:12px;color:var(--muted);margin:13px 0 5px}
+.acctmsg{margin-top:12px;font-size:12.5px;line-height:1.7;border-radius:var(--r-md);padding:10px 12px;display:none}
+.acctmsg.err{display:block;background:rgba(239,75,92,.13);border:1px solid rgba(239,75,92,.4);color:#ffc2c9}
+.acctmsg.ok{display:block;background:rgba(78,224,138,.12);border:1px solid rgba(78,224,138,.4);color:#b6f5d0}
+.acctinfo{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+.acctinfo b{color:var(--text);font-size:15px}
+.acctstats{margin-top:12px;font-size:12.5px;color:var(--muted);line-height:1.9}
+.acctstats span{color:var(--text);font-weight:600}
+.rcbox{margin-top:12px;text-align:center;font:700 19px/1.6 ui-monospace,Menlo,Consolas,monospace;letter-spacing:3px;
+      background:rgba(245,185,60,.1);border:1px dashed rgba(245,185,60,.55);border-radius:var(--r-md);
+      padding:14px;color:#ffd479;user-select:all;word-break:break-all}
+.mergecol{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.mergeopt{display:block;width:100%;text-align:left;background:var(--panel-2);border:1px solid var(--line);
+      border-radius:var(--r-md);padding:13px 15px;cursor:pointer;transition:.16s;color:var(--text);font:inherit}
+.mergeopt:hover{border-color:var(--gold);background:rgba(245,185,60,.1);transform:translateY(-1px)}
+.mergeopt.rec{border-color:rgba(78,224,138,.5)}
+.mergeopt .mo-t{font-size:13.5px;font-weight:700;margin-bottom:4px}
+.mergeopt .mo-d{font-size:11.5px;color:var(--muted);line-height:1.65}
+.mergeopt .badge{font-size:10px;background:rgba(78,224,138,.18);color:#8ef0b6;border-radius:7px;padding:2px 7px;margin-left:7px;vertical-align:1px}
+
 /* ---------- 编辑器 ---------- */
 .editor label,.settings label{display:block;font-size:12px;color:var(--muted);margin:12px 0 5px}
 .editor input[type=text],.editor textarea,.settings input[type=text]{width:100%;background:rgba(10,14,38,.85);
@@ -328,6 +364,18 @@ footer{margin-top:40px;border-top:1px solid var(--line-2);padding-top:16px;font-
 :root[data-theme="light"] .towerslot select,
 :root[data-theme="light"] .fbar select{background:#fff;color:#0f1633}
 :root[data-theme="light"] code{color:#2c3f88}
+:root[data-theme="light"] .acctbtn,
+:root[data-theme="light"] .accttabs button,
+:root[data-theme="light"] .mergeopt{background:#fff;color:#33406b}
+:root[data-theme="light"] .acctbtn:hover,
+:root[data-theme="light"] .mergeopt:hover{background:rgba(245,185,60,.14);color:#0f1633}
+:root[data-theme="light"] .acctform input{background:#fff}
+:root[data-theme="light"] .acctmsg.err{color:#8f1725}
+:root[data-theme="light"] .acctmsg.ok{color:#0f5c33}
+:root[data-theme="light"] .rcbox{color:#8a5b00;background:rgba(245,185,60,.16)}
+:root[data-theme="light"] .mergeopt .badge{color:#0f5c33;background:rgba(15,157,88,.16)}
+:root[data-theme="light"] .acctbtn .dot{background:#9aa4c6}
+:root[data-theme="light"] .acctbtn.on .dot{background:var(--green)}
 
 @media (max-width:620px){
   header h1{font-size:22px}
@@ -355,6 +403,7 @@ footer{margin-top:40px;border-top:1px solid var(--line-2);padding-top:16px;font-
   <header>
     <div class="hero">
       <h1>Clash Royale Deck Build &amp; Copy</h1>
+      <button class="acctbtn" id="acctBtn" title="登录后卡组可在手机 / 电脑之间同步"><span class="dot"></span><span class="who">登录</span></button>
       <button class="themebtn" id="themeBtn" title="切换主题：深空 / 霓虹">◐</button>
     </div>
     <div class="hintbox">
@@ -536,6 +585,79 @@ footer{margin-top:40px;border-top:1px solid var(--line-2);padding-top:16px;font-
       <button class="btn ghost" id="copyToDuel" disabled title="决斗卡组正在开发中">决斗卡组 · 开发中</button>
     </div>
     <div class="hint">「决斗卡组」还在开发中，暂时只能复制到 1v1。2v2 的 HOT 卡组会直接复制到 2v2。</div>
+  </div>
+</dialog>
+
+<!-- 账号 -->
+<dialog id="acct" class="settings">
+  <div class="dlg-head"><h3 id="acctTitle">登录账号</h3><button class="close" data-close="acct">×</button></div>
+  <div class="dlg-body">
+    <div id="acctMsg" class="acctmsg"></div>
+
+    <!-- 未登录：登录 / 注册 / 找回 -->
+    <div id="acctAnon">
+      <div class="accttabs">
+        <button id="tabLogin" class="on">登录</button>
+        <button id="tabReg">注册</button>
+      </div>
+      <div class="acctform">
+        <label class="flabel">用户名</label>
+        <input type="text" id="acctUser" autofocus autocomplete="username" placeholder="2–20 位，中文 / 英文 / 数字">
+        <label class="flabel">密码</label>
+        <input type="password" id="acctPass" autocomplete="current-password" placeholder="至少 6 位">
+        <label class="flabel" id="acctPass2Wrap" style="display:none">再输一次密码</label>
+        <input type="password" id="acctPass2" autocomplete="new-password" style="display:none">
+        <label class="flabel" id="acctRcWrap" style="display:none">恢复码</label>
+        <input type="text" id="acctRc" style="display:none" placeholder="XXXX-XXXX-XXXX">
+      </div>
+      <div class="actions">
+        <button class="btn primary" id="acctGo">登录</button>
+        <button class="btn ghost sm" id="acctForgot" style="display:none">忘记密码</button>
+        <button class="btn ghost sm" id="acctBack" style="display:none">返回登录</button>
+      </div>
+      <div class="hint" id="acctHint">
+        登录后，你的卡组、设置和主题会保存在云端，<b>手机和电脑用同一个账号即可看到同一份数据</b>。<br>
+        不登录也能正常使用，数据只存在这台设备的浏览器里。
+      </div>
+    </div>
+
+    <!-- 已登录 -->
+    <div id="acctOn" style="display:none">
+      <div class="acctinfo">已登录：<b id="acctWho"></b><span id="acctSince"></span></div>
+      <div class="acctstats" id="acctStats"></div>
+      <div class="actions">
+        <button class="btn primary" id="acctSync">立即同步</button>
+        <button class="btn ghost" id="acctLogout">退出登录</button>
+        <button class="btn danger sm" id="acctDelete">删除账号</button>
+      </div>
+      <div class="hint">
+        「退出登录」只是不再在这台设备上同步，云端数据仍在。<br>
+        「删除账号」会永久删掉云端全部卡组与账号本身，且无法恢复。
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<!-- 首次登录时的合并选择 -->
+<dialog id="mergeDlg" class="settings">
+  <div class="dlg-head"><h3>本地与云端都有卡组</h3><span class="close" data-close="mergeDlg">×</span></div>
+  <div class="dlg-body">
+    <div class="acctmsg ok" style="display:block" id="mergeMsg"></div>
+    <div class="mergecol">
+      <button class="mergeopt rec" data-merge="merge">
+        <div class="mo-t">合并<span class="badge">推荐</span></div>
+        <div class="mo-d">两边的卡组都保留。同名不同套的会各留一份，删掉的卡组也会跟着同步。</div>
+      </button>
+      <button class="mergeopt" data-merge="pull">
+        <div class="mo-t">用云端覆盖本地</div>
+        <div class="mo-d">丢掉这台设备上的本地卡组，完全以云端为准。</div>
+      </button>
+      <button class="mergeopt" data-merge="push">
+        <div class="mo-t">用本地覆盖云端</div>
+        <div class="mo-d">把这台设备上的卡组推上云端，覆盖掉云端已有的版本；云端多出来的卡组会被删除。</div>
+      </button>
+    </div>
+    <div class="hint">不确定选哪个就选「合并」——之后每次改动都会自动同步，不会再问你。</div>
   </div>
 </dialog>
 
@@ -864,10 +986,10 @@ function imgOf(card, v){
   return `${CDN}/${dir}/300/${card.h}.png`;
 }
 /* ---------- 设置 ---------- */
-function loadSettings(){
-  let s = {};
-  try { s = JSON.parse(localStorage.getItem(LS_SET) || "{}") || {}; } catch {}
+/** 把任意来源（localStorage / 云端）的设置对象规范化成完整结构 */
+function normalizeSettings(s){
   const out = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+  if(!s || typeof s !== "object") return out;
   if(typeof s.label === "string" && s.label) out.label = s.label;
   if(typeof s.tt === "string" && s.tt) out.tt = s.tt;
   if(typeof s.emitSlots === "boolean") out.emitSlots = s.emitSlots;
@@ -879,9 +1001,16 @@ function loadSettings(){
   }));
   return out;
 }
+function loadSettings(){
+  let s = {};
+  try { s = JSON.parse(localStorage.getItem(LS_SET) || "{}") || {}; } catch {}
+  return normalizeSettings(s);
+}
 function saveSettings(s){
-  try { localStorage.setItem(LS_SET, JSON.stringify(s)); return true; }
+  try { localStorage.setItem(LS_SET, JSON.stringify(s)); }
   catch { toast("无法写入浏览器存储：请改用 http(s) 打开页面"); return false; }
+  notifyLocalChange("settings");
+  return true;
 }
 let settings = loadSettings();
 
@@ -961,6 +1090,18 @@ function rulesSummary(){
     `${o.start === o.end ? o.start : o.start + "-" + o.end} 格 ${o.forms.map(v => starHtml(v, true)).join("")}`
   ).join(" ｜ ");
 }
+/* 卡组 id：客户端生成，云同步靠它对齐两端的同一套卡组 */
+const DECK_ID_RE = /^[a-z0-9]{8,24}$/;
+const ID_ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789";
+function newDeckId(){
+  try{
+    const b = crypto.getRandomValues(new Uint8Array(16));
+    let s = ""; for(let i = 0; i < 16; i++) s += ID_ALPHABET[b[i] % ID_ALPHABET.length];
+    return s;
+  }catch{
+    return (Date.now().toString(36) + Math.random().toString(36).slice(2, 12)).padEnd(16, "0").slice(0, 16);
+  }
+}
 function normDeck(d){
   let cards = (d.cards || []).map((x, i) => {
     if(typeof x === "number") return { id: x, v: "" };
@@ -970,7 +1111,10 @@ function normDeck(d){
   cards = cards.map((c, i) => ({ id: c.id, v: sanitizeVariant(i, c.id, c.v) }));
   const t = Number(d.tower);
   const tower = (byId.has(t) && byId.get(t).tower) ? t : DEFAULT_TOWER;
-  return { name: d.name || "未命名卡组", cards, tower };
+  const id = (typeof d.id === "string" && DECK_ID_RE.test(d.id)) ? d.id : newDeckId();
+  const ua = Number(d.updatedAt);
+  const updatedAt = Number.isFinite(ua) && ua > 0 ? Math.round(ua) : Date.now();
+  return { name: d.name || "未命名卡组", cards, tower, id, updatedAt };
 }
 function loadDecks(){
   repairNotes = [];
@@ -993,10 +1137,18 @@ function notifyRepairs(){
     repairNotes = [];
   }
 }
+/* 本地数据变更通知：云同步模块初始化后会接管这个钩子（避免 TDZ；未登录时它是空的）
+   kind: "decks" | "settings" | "theme"，用来决定刷新哪个时间戳 */
+let localChangeHook = null;
+function notifyLocalChange(kind){
+  if(localChangeHook){ try{ localChangeHook(kind); }catch(e){ console.warn("sync hook failed", e); } }
+}
 function saveDecks(list){
   deckHtmlCache.clear();
-  try { localStorage.setItem(LS_DECKS, JSON.stringify(list)); return true; }
+  try { localStorage.setItem(LS_DECKS, JSON.stringify(list)); }
   catch { toast("无法写入浏览器存储：请改用 http(s) 打开页面"); return false; }
+  notifyLocalChange("decks");
+  return true;
 }
 let decks = loadDecks();
 
@@ -1614,7 +1766,12 @@ $("#eSave").addEventListener("click", () => {
   const name = $("#eName").value.trim() || ("卡组 " + (decks.length + 1));
   const filled = selection.filter(Boolean);
   if(filled.length !== 8){ toast(`还差 ${8 - filled.length} 张卡，请选满 8 张`); return; }
-  const deck = normDeck({ name, cards: selection.map(c => ({ id: c.id, v: c.v })), tower: currentTower });
+  // 编辑已有卡组时保留 id（否则云同步会把它当成「删了旧的、建了新的」）
+  const prev = editingIndex >= 0 ? decks[editingIndex] : null;
+  const deck = normDeck({
+    name, cards: selection.map(c => ({ id: c.id, v: c.v })), tower: currentTower,
+    id: prev ? prev.id : undefined, updatedAt: Date.now(),
+  });
   if(editingIndex >= 0) decks[editingIndex] = deck; else decks.push(deck);
   if(editingMeta){ metaHidden.add(editingMeta); saveMetaHidden(); editingMeta = ""; }
   saveDecks(decks); render(); $("#editor").close(); toast("已保存");
@@ -1673,7 +1830,7 @@ $("#copyBtn").addEventListener("click", () => currentDetailDeck && copyText(webL
 $("#copyDeepBtn").addEventListener("click", () => currentDetailDeck && copyText(deepLink(currentDetailDeck)));
 document.querySelectorAll("[data-close]").forEach(b => b.addEventListener("click", () => $("#" + b.dataset.close).close()));
 
-const APP_VERSION = "v7.1 · 2026-09-14";
+const APP_VERSION = "v8 · 2026-09-14";
 $("#ver").textContent = "版本 " + APP_VERSION;
 console.log("cr-copy-deck", APP_VERSION);
 
@@ -1684,6 +1841,7 @@ function applyTheme(t){
   const meta = document.querySelector('meta[name="theme-color"]');
   if(meta) meta.setAttribute("content", t === "light" ? "#f2f5fd" : t === "neon" ? "#07040f" : "#070a18");
   try { localStorage.setItem(LS_THEME, t); } catch {}
+  notifyLocalChange("theme");
 }
 const THEMES = [["light", "亮色"], ["space", "深空"], ["neon", "霓虹"]];
 let curTheme = (() => { try { return localStorage.getItem(LS_THEME) || "light"; } catch { return "light"; } })();
@@ -1705,6 +1863,456 @@ $("#themeBtn").addEventListener("click", () => {
 buildDeckFilter();
 render();
 notifyRepairs();
+
+/* ==================== 账号 + 跨设备云同步 ====================
+ * 未登录 / 离线 / file:// 打开时完全保持原有行为：只用 localStorage，功能不受影响。
+ * 登录后：卡组、设置、主题随账号保存在云端，任意设备登录同一账号即可看到同一份数据。
+ * 合并策略：逐条按时间戳「后写入者胜」；删除用墓碑记录，不会被另一台设备的旧数据复活。
+ */
+const SYNC = (() => {
+  const BASE = "api";
+  const LS_IDS   = "cr_sync_ids";      // 上次已知的卡组 id（用来识别「被删掉了」）
+  const LS_TOMB  = "cr_sync_tomb";     // 待推送的删除墓碑
+  const LS_STAMP = "cr_sync_stamps";   // 设置 / 主题各自的修改时间
+  const LS_BOUND = "cr_sync_user";     // 本设备上次绑定的账号
+  const DEBOUNCE = 1200;
+
+  const ERR_CN = {
+    invalid_username: "用户名要 2–20 位，只能用中文、英文、数字、_ 和 -",
+    weak_password: "密码至少 6 位",
+    username_taken: "这个用户名已经有人用了，换一个吧",
+    bad_credentials: "用户名或密码不正确",
+    bad_recovery: "用户名或恢复码不正确",
+    rate_limited: "尝试太频繁了，等一会儿再试",
+    too_large: "数据太大了，没能同步上去",
+    invalid_deck: "有卡组数据不合法，没能同步",
+    invalid_settings: "设置数据不合法，没能同步",
+    unauthorized: "登录状态已失效，请重新登录",
+    storage_not_configured: "云同步暂时不可用，已切回本地保存",
+  };
+  const errText = e => ERR_CN[e] || "出错了（" + e + "）";
+
+  let phase = "boot";            // boot | anon | on | offline
+  let me = null;                 // { username }
+  let offset = 0;                // 服务器时间 − 本地时间（校正设备时钟偏差）
+  let lastSyncAt = 0;
+  let cloudCount = 0;
+  let busy = false, applying = false, queued = false;
+  let timer = null;
+  let pendingServer = null;
+  let knownIds = new Set();
+  let tombstones = new Map();
+  let stamps = { settingsAt: 0, themeAt: 0 };
+
+  const now = () => Date.now() + offset;
+  const readLS = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch { return d; } };
+  const writeLS = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+
+  /* ---------- 网络 ---------- */
+  async function api(path, { method = "GET", body } = {}) {
+    const t0 = Date.now();
+    const res = await fetch(BASE + "/" + path, {
+      method,
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: { "content-type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    const t1 = Date.now();
+    let data = null;
+    try { data = await res.json(); } catch {}
+    if (data && typeof data.serverTime === "number") {
+      offset = data.serverTime - Math.round((t0 + t1) / 2);     // 用往返中值估算，扣掉一半 RTT
+    }
+    return { status: res.status, data };
+  }
+
+  /* ---------- 界面 ---------- */
+  const btn = $("#acctBtn");
+  function setPhase(p) {
+    phase = p;
+    btn.classList.remove("on", "busy", "err", "off");
+    if (p === "on") {
+      btn.classList.add(busy ? "busy" : "on");
+      btn.querySelector(".who").textContent = me ? me.username : "已登录";
+      btn.title = "已登录" + (me ? "：" + me.username : "") + " · 点开查看同步状态";
+    } else if (p === "offline") {
+      btn.classList.add("off");
+      btn.querySelector(".who").textContent = "离线";
+      btn.title = "云同步不可用，数据只保存在本机";
+    } else {
+      btn.querySelector(".who").textContent = "登录";
+      btn.title = "登录后卡组可在手机 / 电脑之间同步";
+    }
+  }
+  function msg(text, kind) {
+    const el = $("#acctMsg");
+    el.className = "acctmsg" + (kind ? " " + kind : "");
+    el.textContent = text || "";
+  }
+  function showErr(e) { msg(errText(e), "err"); }
+  function showOk(t) { msg(t, "ok"); }
+
+  function fmtAgo(ts) {
+    if (!ts) return "尚未同步";
+    const s = Math.round((Date.now() - ts) / 1000);
+    if (s < 10) return "刚刚";
+    if (s < 60) return s + " 秒前";
+    if (s < 3600) return Math.round(s / 60) + " 分钟前";
+    return new Date(ts).toLocaleString();
+  }
+
+  function refreshAcctUI() {
+    const on = phase === "on";
+    $("#acctAnon").style.display = on ? "none" : "";
+    $("#acctOn").style.display = on ? "" : "none";
+    $("#acctTitle").textContent = on ? "账号与云同步" : (mode === "forgot" ? "用恢复码重置密码" : mode === "register" ? "注册账号" : "登录账号");
+    if (!on) return;
+    $("#acctWho").textContent = me ? me.username : "";
+    $("#acctSince").textContent = "";
+    $("#acctStats").innerHTML =
+      "本机卡组：<span>" + decks.length + "</span> 套<br>" +
+      "云端卡组：<span>" + cloudCount + "</span> 套<br>" +
+      "上次同步：<span>" + fmtAgo(lastSyncAt) + "</span>";
+  }
+
+  /* ---------- 本地变更收集 ---------- */
+  function collectTombstones() {
+    const cur = new Set(decks.map(d => d.id));
+    const t = now();
+    for (const id of knownIds) {
+      if (!cur.has(id) && !tombstones.has(id)) tombstones.set(id, t);
+    }
+    knownIds = cur;
+    writeLS(LS_IDS, [...cur]);
+    writeLS(LS_TOMB, [...tombstones].map(([id, at]) => ({ id, at })));
+  }
+
+  function payload() {
+    return {
+      decks: decks.map((d, i) => ({
+        id: d.id, name: d.name, cards: d.cards, tower: d.tower, updatedAt: d.updatedAt, sort: i,
+      })),
+      deleted: [...tombstones].map(([id, at]) => ({ id, at })),
+      settings, settingsAt: stamps.settingsAt,
+      theme: curTheme, themeAt: stamps.themeAt,
+    };
+  }
+
+  /* ---------- 把服务端的权威状态落到本地 ---------- */
+  function applyServer(s) {
+    applying = true;
+    try {
+      if (Array.isArray(s.tombstones)) {
+        for (const t of s.tombstones) {
+          const at = tombstones.get(t.id);
+          if (at !== undefined && at <= t.at) tombstones.delete(t.id);   // 服务端已记下，不必重推
+        }
+        writeLS(LS_TOMB, [...tombstones].map(([id, at]) => ({ id, at })));
+      }
+      const list = (Array.isArray(s.decks) ? s.decks : []).map(normDeck);
+      decks = list;
+      knownIds = new Set(list.map(d => d.id));
+      writeLS(LS_IDS, [...knownIds]);
+      saveDecks(decks);
+
+      const sAt = Number(s.settingsAt) || 0;
+      if (s.settings && sAt > stamps.settingsAt) {
+        settings = normalizeSettings(s.settings);
+        stamps.settingsAt = sAt; writeLS(LS_STAMP, stamps);
+        saveSettings(settings);
+      }
+      const tAt = Number(s.themeAt) || 0;
+      if (s.theme && tAt > stamps.themeAt && THEMES.some(t => t[0] === s.theme)) {
+        stamps.themeAt = tAt; writeLS(LS_STAMP, stamps);
+        curTheme = s.theme; applyTheme(curTheme);
+      }
+    } finally {
+      applying = false;
+    }
+  }
+
+  /* ---------- 推送 / 拉取 ---------- */
+  async function flush() {
+    if (phase !== "on") return;
+    if (busy) { queued = true; return; }
+    if (timer) { clearTimeout(timer); timer = null; }
+    busy = true; queued = false;
+    setPhase("on");
+    try {
+      collectTombstones();
+      const { status, data } = await api("sync", { method: "PUT", body: payload() });
+      if (status === 401) { me = null; setPhase("anon"); showErr("unauthorized"); return; }
+      if (status !== 200 || !data || !data.ok) {
+        if (status === 503 || status === 0) { setPhase("offline"); }
+        return;
+      }
+      applyServer(data);
+      cloudCount = data.decks ? data.decks.length : decks.length;
+      lastSyncAt = Date.now();
+      writeLS(LS_BOUND, me ? me.username : "");   // 成功同步过 = 本机数据已归属这个账号
+      setPhase("on");
+      render();
+      refreshDataView();
+      refreshAcctUI();
+    } catch (e) {
+      setPhase("offline");
+    } finally {
+      busy = false;
+      if (queued) { queued = false; schedule(); }
+    }
+  }
+
+  function schedule() {
+    if (applying) return;                       // 正在写回远端数据，别把自己的写入当成新变更
+    if (phase !== "on") return;                 // 未登录就什么也不用做
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => { timer = null; flush(); }, DEBOUNCE);
+  }
+
+  /* ---------- 启动 / 登录流程 ---------- */
+  async function boot() {
+    knownIds = new Set(decks.map(d => d.id));
+    const savedIds = readLS(LS_IDS, null);
+    if (Array.isArray(savedIds)) knownIds = new Set(savedIds);
+    tombstones = new Map((readLS(LS_TOMB, []) || []).map(t => [t.id, t.at]));
+    stamps = readLS(LS_STAMP, { settingsAt: 0, themeAt: 0 });
+    if (!stamps || typeof stamps !== "object") stamps = { settingsAt: 0, themeAt: 0 };
+
+    if (location.protocol !== "http:" && location.protocol !== "https:") { setPhase("offline"); return; }
+    try {
+      const { status, data } = await api("me");
+      if (status === 503) { setPhase("offline"); return; }
+      if (status !== 200 || !data || !data.ok) { me = null; setPhase("anon"); return; }
+      me = data.user; cloudCount = data.deckCount || 0;
+      setPhase("on");
+      await firstSync();
+    } catch {
+      setPhase("offline");
+    }
+  }
+
+  async function firstSync() {
+    const { status, data } = await api("sync");
+    if (status !== 200 || !data || !data.ok) { setPhase(status === 503 ? "offline" : "on"); return; }
+    const bound = String(readLS(LS_BOUND, ""));
+    if (decks.length && data.decks && data.decks.length && bound !== (me && me.username)) {
+      pendingServer = data;
+      $("#mergeMsg").innerHTML = "本机有 <b>" + decks.length + "</b> 套卡组，云端账号有 <b>" +
+        data.decks.length + "</b> 套。请选择怎么处理（只问这一次）。";
+      $("#mergeDlg").showModal();
+      return;
+    }
+    await flush();
+  }
+
+  async function chooseMerge(kind) {
+    const server = pendingServer;
+    pendingServer = null;
+    if (!server) return;
+    if ($("#mergeDlg").open) $("#mergeDlg").close();
+    try {
+      if (kind === "pull") {
+        // 云端为准：本地独有的一律丢弃，但不会反过来去删云端的卡组
+        applying = true;
+        try {
+          decks = (server.decks || []).map(normDeck);
+          knownIds = new Set(decks.map(d => d.id));
+          tombstones.clear();
+          writeLS(LS_IDS, [...knownIds]);
+          writeLS(LS_TOMB, []);
+          saveDecks(decks);
+          if (server.settings && Number(server.settingsAt) > stamps.settingsAt) {
+            settings = normalizeSettings(server.settings);
+            stamps.settingsAt = Number(server.settingsAt); saveSettings(settings);
+          }
+          if (server.theme && Number(server.themeAt) > stamps.themeAt && THEMES.some(t => t[0] === server.theme)) {
+            curTheme = server.theme; stamps.themeAt = Number(server.themeAt);
+          }
+          writeLS(LS_STAMP, stamps);
+          applyTheme(curTheme);
+        } finally { applying = false; }
+      } else if (kind === "push") {
+        // 本地为准：本地卡组重新盖时间戳，云端多出来的删掉
+        const localIds = new Set(decks.map(d => d.id));
+        const t = now();
+        for (const rd of (server.decks || [])) if (!localIds.has(rd.id)) tombstones.set(rd.id, t);
+        writeLS(LS_TOMB, [...tombstones].map(([id, at]) => ({ id, at })));
+        decks = decks.map(d => ({ ...d, updatedAt: t }));
+        saveDecks(decks);
+        stamps.settingsAt = t; stamps.themeAt = t;
+        writeLS(LS_STAMP, stamps);
+      }
+      // kind === "merge"：什么都不用做，正常推送即可，服务端会逐条合并
+      writeLS(LS_BOUND, me ? me.username : "");
+      await flush();
+      if (phase === "on") toast("已同步");
+    } finally {
+      busy = false;
+    }
+  }
+
+  /* ---------- 账号表单 ---------- */
+  let mode = "login";    // login | register | forgot
+
+  function setMode(m) {
+    mode = m;
+    $("#tabLogin").classList.toggle("on", m === "login");
+    $("#tabReg").classList.toggle("on", m === "register");
+    const reg = m === "register";
+    $("#acctPass2Wrap").style.display = reg ? "" : "none";
+    $("#acctPass2").style.display = reg ? "" : "none";
+    $("#acctRcWrap").style.display = m === "forgot" ? "" : "none";
+    $("#acctRc").style.display = m === "forgot" ? "" : "none";
+    $("#acctForgot").style.display = m === "login" ? "" : "none";
+    $("#acctBack").style.display = m === "login" ? "none" : "";
+    $("#acctGo").textContent = m === "register" ? "注册并登录" : m === "forgot" ? "重置密码" : "登录";
+    $("#acctPass").setAttribute("autocomplete", reg ? "new-password" : "current-password");
+    $("#acctHint").innerHTML = m === "register"
+      ? "只用用户名和密码，<b>不需要邮箱</b>。注册成功后会给你一串恢复码，忘记密码时用它来找回，请自己存好。"
+      : m === "forgot"
+        ? "输入注册时给你的那串恢复码（形如 <code>XXXX-XXXX-XXXX</code>），即可设置新密码。重置后旧恢复码作废，会发一串新的给你。"
+        : "登录后，你的卡组、设置和主题会保存在云端，<b>手机和电脑用同一个账号即可看到同一份数据</b>。<br>不登录也能正常使用，数据只存在这台设备的浏览器里。";
+    msg("");
+  }
+
+  async function submit() {
+    const username = $("#acctUser").value.trim();
+    const password = $("#acctPass").value;
+    if (!username) return showErr("invalid_username");
+    if (!password) return showErr("weak_password");
+    if (mode === "register" && password !== $("#acctPass2").value) return showErr("weak_password");
+    if (mode === "register" && password.length < 6) return showErr("weak_password");
+
+    const go = $("#acctGo");
+    go.disabled = true;
+    msg("正在处理…");
+    try {
+      let r;
+      if (mode === "forgot") {
+        r = await api("auth", { method: "POST", body: { action: "reset", username, recoveryCode: $("#acctRc").value, password } });
+      } else {
+        r = await api("auth", { method: "POST", body: { action: mode, username, password } });
+      }
+      if (r.status === 503) return showErr("storage_not_configured");
+      if (!r.data || !r.data.ok) return showErr((r.data && r.data.error) || "network");
+
+      me = r.data.user || { username };
+      $("#acctPass").value = ""; $("#acctPass2").value = ""; $("#acctRc").value = "";
+      setPhase("on");
+      if (r.data.recoveryCode) {
+        showOk((mode === "register" ? "注册成功！" : "密码已重置。") +
+          "\n下面是你的恢复码，请立刻抄下来存好 —— 它只显示这一次，忘记密码时只能靠它：");
+        $("#acctMsg").innerHTML += '<div class="rcbox">' + r.data.recoveryCode + "</div>";
+      } else {
+        showOk("登录成功，正在同步…");
+      }
+      refreshAcctUI();
+      await firstSync();
+      refreshAcctUI();
+    } catch (e) {
+      showErr("network");
+    } finally {
+      go.disabled = false;
+    }
+  }
+
+  async function logout() {
+    try { await api("auth", { method: "POST", body: { action: "logout" } }); } catch {}
+    me = null; cloudCount = 0; lastSyncAt = 0;
+    writeLS(LS_BOUND, "");          // 下次登录（可能是别人）该问合并还得问
+    setPhase("anon");
+    refreshAcctUI();
+    showOk("已退出登录。云端数据仍在，本机卡组也还在，只是不再自动同步。");
+  }
+
+  async function deleteAccount() {
+    if (!confirm("确定要删除账号吗？云端保存的全部卡组、设置都会永久删除，且无法恢复。")) return;
+    if (!confirm("最后确认：真的要删除吗？")) return;
+    try {
+      const r = await api("me", { method: "DELETE", body: { confirm: "DELETE" } });
+      if (r.status !== 200) return showErr((r.data && r.data.error) || "network");
+      me = null; cloudCount = 0; lastSyncAt = 0;
+      writeLS(LS_BOUND, "");
+      setPhase("anon");
+      refreshAcctUI();
+      showOk("账号已删除。本机的卡组仍然保留在浏览器里。");
+    } catch { showErr("network"); }
+  }
+
+  /* ---------- 事件绑定 ---------- */
+  btn.addEventListener("click", () => {
+    if (phase === "offline" && !me) { toast("云同步不可用（本地打开或后端未配置），数据只保存在本机"); return; }
+    setMode("login");
+    refreshAcctUI();
+    msg("");
+    $("#acct").showModal();          // 焦点由 #acctUser 上的 autofocus 接管：
+                                     // 之前用 setTimeout 抢焦点，会在用户已经开始输入后把光标拽走，
+                                     // 导致后半截字串进用户名框、登录报「用户名或密码不正确」。
+  });
+  $("#tabLogin").addEventListener("click", () => setMode("login"));
+  $("#tabReg").addEventListener("click", () => setMode("register"));
+  $("#acctForgot").addEventListener("click", () => setMode("forgot"));
+  $("#acctBack").addEventListener("click", () => setMode("login"));
+  $("#acctGo").addEventListener("click", submit);
+  $("#acct").addEventListener("keydown", e => {
+    if (e.key === "Enter" && phase !== "on") { e.preventDefault(); submit(); }
+  });
+  $("#acctLogout").addEventListener("click", logout);
+  $("#acctDelete").addEventListener("click", deleteAccount);
+  $("#acctSync").addEventListener("click", async () => {
+    if (phase === "offline") { showErr("storage_not_configured"); return; }
+    showOk("正在同步…");
+    await flush();
+    refreshAcctUI();
+    if (lastSyncAt) showOk("同步完成：" + fmtAgo(lastSyncAt));
+  });
+  document.querySelectorAll("#mergeDlg [data-merge]").forEach(b =>
+    b.addEventListener("click", () => chooseMerge(b.dataset.merge)));
+  // 直接关掉合并窗 = 采用最安全的「合并」
+  $("#mergeDlg").addEventListener("close", () => { if (pendingServer) chooseMerge("merge"); });
+
+  // 页面被切到后台 / 关闭前，把防抖里还没发出去的改动补推一次
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "hidden") return;
+    if (phase !== "on" || applying) return;
+    if (!timer) return;
+    clearTimeout(timer); timer = null;
+    try {
+      collectTombstones();
+      fetch(BASE + "/sync", {
+        method: "PUT", credentials: "same-origin", keepalive: true,
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload()),
+      }).catch(() => {});
+    } catch {}
+  });
+
+  localChangeHook = kind => {
+    if (applying) return;                        // 正在写回远端数据，别把自己的写入当成新变更
+    const t = Date.now() + offset;
+    // 未登录时也记时间戳：这样登录后能把登录前改过的设置/主题推上去
+    if (kind === "settings") stamps.settingsAt = t;
+    else if (kind === "theme") stamps.themeAt = t;
+    writeLS(LS_STAMP, stamps);
+    schedule();                                  // schedule() 内部会在未登录时直接返回
+  };
+
+  // _state() 供排障使用：同步引擎出问题时能一眼看出卡在哪个环节
+  return {
+    boot, flush, schedule,
+    phase: () => phase,
+    user: () => me,
+    _state: () => ({
+      phase, busy, queued, applying, pending: !!timer, offset,
+      knownIds: [...knownIds], tombstones: [...tombstones],
+      stamps, lastSyncAt, cloudCount, localCount: decks.length,
+    }),
+  };
+})();
+
+SYNC.boot();
+
 </script>
 </body>
 </html>

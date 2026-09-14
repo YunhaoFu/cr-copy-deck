@@ -207,11 +207,58 @@ clashroyale://copyDeck?deck=27000002;26000023;...;28000015&l=Royals&tt=159000000
 
 设置与卡组都存在浏览器 localStorage（`cr_decks_v2` / `cr_settings_v1`），旧版数据（`cr_decks_v1`）会自动迁移。
 
+## 账号与云同步
+
+给联盟战队内部用的小型账号系统：**用户名 + 密码**，登录后卡组 / 设置 / 主题保存在云端，
+手机和电脑用同一个账号就能看到同一份数据。
+
+- **不登录也完全能用** —— 数据只存在这台设备的浏览器里，功能一个不少；
+- **不收集邮箱**，也没有任何邮件发送环节；忘记密码靠注册时展示一次的**恢复码**；
+- 打开方式不受限：`file://` 双击、离线、后端没配好，都会自动退回纯本地模式，页面顶部显示「离线」。
+
+### 用户视角的流程
+
+| 场景 | 行为 |
+|---|---|
+| 第一次注册 | 填用户名（2–20 位，中文/英文/数字/`_`/`-`）+ 密码（≥6 位）→ 立刻登录，并弹出**恢复码**（只显示这一次） |
+| 换设备 | 打开同一网址 → 点右上角「登录」→ 输入账号密码 → 自动拉下云端数据 |
+| 首次在某设备登录，且本机与云端都有卡组 | 弹窗三选一：**合并**（推荐）/ 用云端覆盖本地 / 用本地覆盖云端。之后不再问 |
+| 忘记密码 | 登录框 →「忘记密码」→ 用恢复码设新密码（旧恢复码作废，换发新的） |
+| 退出登录 | 只是本机不再同步；云端数据与本机卡组都还在 |
+| 删除账号 | 永久删除云端的账号与全部卡组，**本机 localStorage 不动** |
+
+### 同步是怎么做的
+
+- 卡组 id 由客户端生成（16 位 base36），因此「改名」在云端是**更新同一套**，不会变成删旧建新；
+- 每次本地改动（增删改卡组 / 保存设置 / 切换主题）都会通知同步模块，**1.2 秒防抖**后整表 PUT；
+- 服务端按 **逐条时间戳「后写入者胜」** 合并，不需要版本号也不会互相覆盖；
+- 删除用**墓碑**记录（保留 90 天），所以「A 删掉的卡组」不会被 B 的旧数据复活；
+- 设置与主题各自带时间戳独立合并，改主题不会把设置冲掉；
+- 页面切到后台或关闭前会用 `keepalive` 补推一次，避免防抖窗口里的改动丢失；
+- 客户端用服务端返回的 `serverTime` 校正本机时钟偏差（取往返中值），时钟不准也不会永远输。
+
+### 安全边界（够用就好的取舍）
+
+这是给几十人内部用的小工具，不是金融系统。已经做到：
+
+- 密码用 **PBKDF2-SHA256**（默认 30000 次 + 16 字节随机盐 + 服务端 `PASSWORD_PEPPER`）派生后入库，**不存明文**；
+- 会话 Cookie 为 `HttpOnly; Secure; SameSite=Lax`，库里只存 `sha256(token + pepper)`，拖库也无法直接冒用登录态；
+- 哈希比较走定长比较，避免时间侧信道；登录失败不区分「用户不存在 / 密码错」；
+- 注册 / 登录 / 重置都有限流（按 IP 与用户名分别计数）；
+- 换密码会作废该用户全部旧会话；注销账号会删掉该用户的全部行。
+
+**有意没做**（如果以后队伍变大再补）：邮箱验证、二次验证、密码强度校验、审计日志。
+
+> PBKDF2 迭代次数的上限来自 Cloudflare Workers 免费版 **单请求 10ms CPU** 的硬限制（超了直接 Error 1102，代码里 catch 不住）。
+> 默认取 30000（配合 pepper 强度足够）。升级到 Workers Paid 后可以设环境变量 `PBKDF2_ITERATIONS=210000`，
+> 老密码会在下次登录成功时自动重哈希，用户无感。
+
 ## 部署（Cloudflare Pages）
 
 线上地址：**https://cr-copy-deck.pages.dev**
 
 架构与 `YunhaoFu/night-maid` 一致：**GitHub 仓库 → Cloudflare Pages（Git 集成）→ push 自动部署**。
+账号后端用 Pages Functions + D1，同样是零依赖、零运维、零成本，**不依赖任何自建服务器**。
 
 | 项目 | 值 |
 |---|---|
@@ -220,30 +267,63 @@ clashroyale://copyDeck?deck=27000002;26000023;...;28000015&l=Royals&tt=159000000
 | Framework preset | None（本项目无框架、零依赖） |
 | Build command | `node scripts/build-site.mjs` |
 | Build output directory | `dist` |
+| D1 绑定 | 变量名 **`CR_DB`**（Production 与 Preview 各配一次） |
+| 环境变量（可选） | `PASSWORD_PEPPER`、`SESSION_PEPPER`（各一串长随机值；改 pepper 会让已有密码失效，**别乱改**） |
+
+### 首次启用账号系统（一次性）
+
+```bash
+# 1) 登录 wrangler（需要 Node ≥ 22.5，仓库根目录执行）
+npx wrangler login
+
+# 2) 建库
+npx wrangler d1 create cr-copy-deck-sync     # 把输出里的 database_id 记下
+
+# 3) 建表
+npx wrangler d1 execute cr-copy-deck-sync --remote --file=migrations/0001_sync_auth.sql
+```
+
+然后在 Cloudflare 控制台：Pages → `cr-copy-deck` → **Settings → Bindings → Add → D1 database**，
+变量名填 `CR_DB`，选中 `cr-copy-deck-sync`（Production 和 Preview 都要配）→ **Deployments → Retry deployment**。
+
+没配 D1 时，`/api/*` 一律返回 `503 storage_not_configured`，前端自动切「离线」，页面照常可用 —— 不会白屏。
 
 ### 本地命令
 
 ```bash
-node scripts/validate.mjs     # 零依赖校验：单文件自包含 / 关键钩子 / 数据不变量 / 无敏感串
-node scripts/build-site.mjs   # 生成 dist/index.html（只发布站点文件，不暴露 README、scripts、.git）
+node scripts/validate.mjs      # 110 项零依赖静态校验（单文件自包含 / 数据不变量 / 账号与同步挂点）
+node scripts/build-site.mjs    # 生成 dist/index.html + dist/_routes.json
+node scripts/test-api.mjs      # 105 项后端集成测试（用 node:sqlite 顶替 D1，把 functions/ 真跑一遍）
+node scripts/dev-server.mjs    # 本地开发服务器：http://localhost:8788（同时提供页面和 /api/*）
+```
+
+本地起服务后就能在浏览器里把注册 / 登录 / 跨设备同步完整走一遍（`--db .dev.db` 可让数据落盘，
+默认内存库、重启即清空）。注意用 `http://localhost:8788` 而不是 IP —— 纯 IP 的 http 下浏览器会丢弃 Secure Cookie。
+
+还有一个浏览器端到端测试 `scripts/test-e2e.mjs`（49 项，真开 Chrome 跑「注册 → 建卡组 → 换设备登录 → 双向同步 → 删除 → 离线降级」）。
+它依赖 `puppeteer-core`，没有放进 `package.json`，需要时自备：
+
+```bash
+npm i -D puppeteer-core@23 && CHROME_PATH=/usr/bin/google-chrome node scripts/test-e2e.mjs
 ```
 
 ### 发版流程
 
-1. 改 `index.html`（如更新卡组数据），并把底部版本号 `APP_VERSION` 递进（例：`v7 · 2026-09-14`）；
-2. `git commit && git push` → GitHub Action 跑 `validate` + `build`；
+1. 改 `index.html`（如更新卡组数据），并把底部版本号 `APP_VERSION` 递进（例：`v8 · 2026-09-14`）；
+2. `git commit && git push` → GitHub Action 跑 `validate` + `build` + `test-api`；
 3. CI 通过后 Cloudflare Pages 自动构建部署，几十秒后生效；
 4. 用户端若仍是旧版：手机浏览器**硬刷新**（或微信里「在浏览器打开」）。
 
 ### 回滚
 
 Cloudflare → Workers & Pages → `cr-copy-deck` → **Deployments** → 选中上一个成功部署 → **Rollback**；
-代码侧也可 `git revert` 后 push。
+代码侧也可 `git revert` 后 push。数据库结构变更请写新的 `migrations/000N_*.sql`，不要改历史迁移文件。
 
-### 注意：用户数据存在浏览器本地
+### 注意：不登录时数据仍在浏览器本地
 
 卡组 / 设置 / 主题都存在 localStorage，**按源（协议+主机+端口）隔离**，所以 `file://`、局域网 `http://192.168.x.x:8000`、
-`https://cr-copy-deck.pages.dev` 三处数据互不相通；换域名也不会跟着走。迁移方法（对你自己同样适用）：
+`https://cr-copy-deck.pages.dev` 三处数据互不相通；换域名也不会跟着走。
+**登录后就不用再关心这个** —— 云端是跨设备、跨源的同一份数据。手动迁移方法：
 
 ```js
 // 旧地址 Console：
@@ -256,16 +336,24 @@ localStorage.setItem("cr_decks_v2", '<粘贴>')
 ### 上线后自检
 
 ```bash
-curl -sS -o /dev/null -D - https://cr-copy-deck.pages.dev/ | head -12
-curl -sS -H 'Accept-Encoding: gzip' -o /dev/null -w '%{size_download}\n' https://cr-copy-deck.pages.dev/   # 期望 ~41KB
+curl -s -o /dev/null -w '%{http_code}\n' https://cr-copy-deck.pages.dev/README.md   # 期望 404（构建配置已修）
+curl -sS -i https://cr-copy-deck.pages.dev/api/me                                   # 期望 401 {"ok":false,"error":"unauthorized"}
+curl -sS -X POST https://cr-copy-deck.pages.dev/api/auth \
+  -H 'content-type: application/json' \
+  -d '{"action":"register","username":"smoketest","password":"123456"}'             # 期望 201 + recoveryCode
+curl -sS -o /dev/null -w '%{http_code}\n' https://cr-copy-deck.pages.dev/          # 期望 200
 ```
 
-真机再确认：新建卡组后重开页面仍在、复制链接可用、扫码 → `link.clashroyale.com` → 唤起游戏、
-「在手机上导入」走裸 `clashroyale://` 兜底、卡图正常（失败会自动降级到备用 CDN）。
+真机再确认：注册 → 建卡组 → 换一台设备登录能看到 → 一端删除另一端刷新也消失 →
+断网改动能推上去 → 不登录也能正常用。
 
 ## 文件与数据
 
-- `index.html` —— 全部功能（单文件，无外部依赖；卡牌库与二维码库已内置）
+- `index.html` —— 全部前端功能（单文件，无外部依赖；卡牌库与二维码库已内置）
+- `functions/api/{auth,me,sync}.js` + `functions/_lib/store.js` —— Pages Functions 后端（零依赖）
+- `migrations/0001_sync_auth.sql` —— D1 表结构（users / sessions / decks / user_settings / auth_limits）
+- `_routes.json` —— 只把 `/api/*` 交给 Functions，静态资源不触发函数
+- `scripts/` —— `validate` / `build-site` / `test-api` / `dev-server`（均零依赖）；`test-e2e` 需自备 puppeteer-core
 - 卡牌库：127 张（含 Minion Giant、Spirit Empress、Ronin 等新卡）
 - 卡图：Supercell 官方 CDN（`api-assets.clashroyale.com`，普通 / `cardevolutions` 觉醒 / `cardheroes` 英雄），
   失败时自动回退 RoyaleAPI CDN；精英无官方图
@@ -275,8 +363,11 @@ curl -sS -H 'Accept-Encoding: gzip' -o /dev/null -w '%{size_download}\n' https:/
 
 - 链接格式与官方页面接受的格式一致（HTTP 200），且与手机里复制的真实链接逐字符一致；
 - 页面渲染出的二维码可被解码，内容 == 生成的导入链接（含 `slots=`）；
-- 32 项自动化测试通过：播种 / 删除 / 不复活、形态选择与槽位规则、`slots` 写入与开关、
-  `l`/`tt` 自定义、v1 迁移、恢复示例、粘贴解析（含 `%3B` 编码）等。
+- 静态校验 110 项、后端集成测试 105 项、浏览器端到端测试 49 项，全部通过；
+- 端到端覆盖：注册 → 建卡组 → 换设备登录看到同一份 → 改名（云端仍是同一套，不会变两套）→
+  主题 / 设置跨设备生效 → 一端删除另一端刷新也消失且不被旧数据复活 → 首次登录弹合并窗 →
+  退出后重新登录 → 恢复码重置密码（旧密码失效）→ `file://` 下判离线、不访问后端、功能照常；
+- 兼容性：未绑定 D1 时 `/api/*` 返回 503，前端自动离线降级，页面功能不受影响。
 
 ## 注意
 

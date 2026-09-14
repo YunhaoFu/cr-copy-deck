@@ -1,0 +1,16 @@
+{
+  "name": "cr-copy-deck",
+  "version": "8.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Clash Royale Deck Build & Copy —— 零依赖单文件站点 + Cloudflare Pages Functions 账号/云同步后端",
+  "scripts": {
+    "validate": "node scripts/validate.mjs",
+    "build": "node scripts/build-site.mjs",
+    "test:api": "node scripts/test-api.mjs",
+    "test": "node scripts/validate.mjs && node scripts/build-site.mjs && node scripts/test-api.mjs"
+  },
+  "engines": {
+    "node": ">=22.5"
+  }
+}

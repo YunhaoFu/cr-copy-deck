@@ -2,3 +2,8 @@ dist/
 node_modules/
 .DS_Store
 *.log
+
+# 本地开发服务器的 SQLite 文件（node scripts/dev-server.mjs --db .dev.db）
+.dev.db
+.dev.db-shm
+.dev.db-wal
