@@ -14,7 +14,16 @@
   --r-lg:18px; --r-md:12px; --r-sm:8px;
   --sh:0 10px 30px -12px rgba(0,0,0,.75);
 }
-/* 主题二：霓虹（暗紫 + 青 / 紫光） */
+/* 主题一：亮色（默认） */
+:root[data-theme="light"]{
+  --bg:#f2f5fd; --bg2:#e9eefb; --glow1:rgba(79,125,255,.12); --glow2:rgba(245,185,60,.14);
+  --panel:rgba(255,255,255,.92); --panel-2:rgba(238,243,255,.96);
+  --line:rgba(120,142,205,.5); --line-2:rgba(120,142,205,.3);
+  --text:#0f1633; --muted:#5b6893; --dim:#8590b3;
+  --gold:#c8890a; --blue:#2f62e0; --green:#0f9d58; --red:#d63b4f;
+  --sh:0 12px 28px -16px rgba(28,44,102,.45);
+}
+/* 主题三：霓虹（暗紫 + 青 / 紫光） */
 :root[data-theme="neon"]{
   --bg:#07040f; --bg2:#150a2e; --glow1:rgba(34,211,238,.14); --glow2:rgba(192,132,252,.18);
   --panel:rgba(40,22,74,.72); --panel-2:rgba(56,30,98,.85);
@@ -45,21 +54,21 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;color:#bcd0ff}
 .hero{display:flex;align-items:center;gap:14px}
 .hero h1{flex:1;min-width:0}
 .themebtn{flex:0 0 auto;width:38px;height:38px;border-radius:50%;border:1px solid var(--line);
-      background:rgba(29,39,82,.7);color:#dbe2ff;font-size:17px;cursor:pointer;transition:.18s}
-.themebtn:hover{border-color:var(--gold);color:#fff;transform:rotate(180deg)}
+      background:var(--panel-2);color:var(--text);font-size:17px;cursor:pointer;transition:.18s}
+.themebtn:hover{border-color:var(--gold);transform:rotate(180deg)}
 
 /* ---------- 头部 ---------- */
 header h1{
   font-size:28px;line-height:1.25;margin:0 0 14px;letter-spacing:.2px;font-weight:800;
-  background:linear-gradient(92deg,#fff 12%,#bcd0ff 52%,var(--gold) 108%);
+  background:linear-gradient(92deg,var(--text) 8%,var(--blue) 58%,var(--gold) 108%);
   -webkit-background-clip:text;background-clip:text;color:transparent;
 }
 .hintbox{
   padding:15px 18px;border-radius:var(--r-lg);line-height:2;
   background:linear-gradient(180deg,rgba(79,125,255,.12),rgba(79,125,255,.04));
-  border:1px solid var(--line-2);color:#cdd6ff;font-size:13px;box-shadow:var(--sh)
+  border:1px solid var(--line-2);color:var(--muted);font-size:13px;box-shadow:var(--sh)
 }
-.hintbox b{color:#fff;font-weight:700;background:rgba(255,255,255,.08);border:1px solid var(--line-2);
+.hintbox b{color:var(--text);font-weight:700;background:var(--panel-2);border:1px solid var(--line-2);
   border-radius:6px;padding:2px 8px;margin-right:6px;font-size:12px}
 
 /* ---------- 标签页 ---------- */
@@ -67,21 +76,21 @@ header h1{
       background:rgba(10,14,38,.6);border:1px solid var(--line-2);width:fit-content;max-width:100%;overflow:auto}
 .tabs .tab{background:transparent;border:0;color:var(--muted);border-radius:999px;padding:8px 18px;
       font-size:13px;font-weight:600;cursor:pointer;letter-spacing:.3px;white-space:nowrap;transition:.18s}
-.tabs .tab:hover{color:#fff;background:rgba(255,255,255,.05)}
+.tabs .tab:hover{color:var(--text);background:rgba(127,150,220,.12)}
 .tabs .tab.on{color:#101425;background:linear-gradient(180deg,#ffd977,var(--gold));box-shadow:0 6px 18px -8px rgba(245,185,60,.8)}
 
 /* ---------- 区块标题 / 按钮 ---------- */
 .rowhead{display:flex;align-items:center;gap:10px;margin:20px 0 12px}
-.rowhead h2{margin:0;font-size:15px;font-weight:700;color:#e7ecff;letter-spacing:.4px}
+.rowhead h2{margin:0;font-size:15px;font-weight:700;color:var(--text);letter-spacing:.4px}
 .rowhead .sp{margin-left:auto}
-.ghostbtn{background:rgba(29,39,82,.8);border:1px solid var(--line);color:#dbe2ff;border-radius:999px;
+.ghostbtn{background:var(--panel-2);border:1px solid var(--line);color:var(--text);border-radius:999px;
       padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;transition:.18s}
-.ghostbtn:hover{border-color:var(--gold);color:#fff;background:rgba(245,185,60,.12)}
+.ghostbtn:hover{border-color:var(--gold);color:var(--text);background:rgba(245,185,60,.12)}
 .btn{border:0;border-radius:12px;padding:11px 18px;font-size:14px;font-weight:700;cursor:pointer;
      text-decoration:none;display:inline-flex;align-items:center;gap:7px;transition:.18s}
 .btn.primary{background:linear-gradient(180deg,#4ee08a,var(--green));color:#06210f}
 .btn.blue{background:linear-gradient(180deg,#6b93ff,var(--blue));color:#fff}
-.btn.ghost{background:rgba(29,39,82,.9);color:#dbe2ff;border:1px solid var(--line)}
+.btn.ghost{background:var(--panel-2);color:var(--text);border:1px solid var(--line)}
 .btn.danger{background:rgba(239,75,92,.14);color:#ffc2c9;border:1px solid rgba(239,75,92,.5)}
 .btn.sm{padding:8px 13px;font-size:13px}
 .btn:hover{transform:translateY(-1px);filter:brightness(1.05)}
@@ -90,7 +99,7 @@ header h1{
 .fpanel{margin:0 0 16px;background:linear-gradient(180deg,rgba(29,39,82,.55),rgba(21,28,64,.28));
       border:1px solid var(--line-2);border-radius:var(--r-lg);padding:12px 14px 9px;box-shadow:var(--sh)}
 .fhead{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap}
-.fhead .ftitle{font-size:12px;font-weight:700;color:#dfe6ff;letter-spacing:.8px;text-transform:uppercase}
+.fhead .ftitle{font-size:12px;font-weight:700;color:var(--text);letter-spacing:.8px;text-transform:uppercase}
 .fhead .fhint{font-size:11px;color:var(--dim)}
 .fhead .fcount{font-size:11px;color:var(--gold);margin-left:auto;font-weight:600}
 .fhead .fclear{background:rgba(239,75,92,.14);border:1px solid rgba(239,75,92,.5);color:#ffb9c0;
@@ -100,14 +109,14 @@ header h1{
 .frow + .frow{border-top:1px dashed var(--line-2)}
 .frow .flabel{flex:0 0 auto;width:32px;font-size:11px;color:var(--dim);padding-top:4px;letter-spacing:.5px;font-weight:600}
 .fchips{display:flex;flex-wrap:wrap;gap:5px}
-.chip{display:inline-flex;align-items:center;gap:5px;background:rgba(10,14,38,.55);border:1px solid var(--line-2);
-      color:#c3cdf0;border-radius:999px;padding:2px 10px 2px 3px;font-size:11px;line-height:18px;cursor:pointer;
+.chip{display:inline-flex;align-items:center;gap:5px;background:var(--panel-2);border:1px solid var(--line-2);
+      color:var(--muted);border-radius:999px;padding:2px 10px 2px 3px;font-size:11px;line-height:18px;cursor:pointer;
       user-select:none;transition:.15s}
 .chip img{width:16px;height:20px;object-fit:contain;border-radius:4px;background:#0a0e26;display:block}
-.chip:hover{border-color:var(--gold);color:#fff;transform:translateY(-1px)}
+.chip:hover{border-color:var(--gold);color:var(--text);transform:translateY(-1px)}
 .chip.on{background:rgba(49,196,111,.15);border-color:rgba(49,196,111,.72);color:#d8ffe8}
 .chip.on::after{content:"✓";font-size:10px;color:#7ff0b0;font-weight:700}
-.chip.ex{background:rgba(239,75,92,.1);border-color:rgba(239,75,92,.5);color:#9098b2}
+.chip.ex{background:rgba(239,75,92,.1);border-color:rgba(239,75,92,.5);color:var(--dim)}
 .chip.ex img{filter:grayscale(1) brightness(.55)}
 .chip.ex .cn{text-decoration:line-through;text-decoration-color:rgba(255,155,166,.6)}
 .chip.ex::after{content:"／";font-size:11px;color:#ff9aa6;font-weight:700}
@@ -122,14 +131,14 @@ header h1{
       background:linear-gradient(180deg,rgba(255,255,255,.05),transparent 42%)}
 .deck:hover{transform:translateY(-3px);border-color:rgba(245,185,60,.55);box-shadow:0 16px 36px -16px rgba(0,0,0,.9)}
 .deck .title{display:flex;align-items:center;gap:8px;margin:0 0 11px;font-weight:700;font-size:14.5px;
-      letter-spacing:.2px;padding-right:100px;flex-wrap:nowrap;color:#fff}
+      letter-spacing:.2px;padding-right:100px;flex-wrap:nowrap;color:var(--text)}
 .deck .title .tname{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .title-cores{display:inline-flex;gap:3px;vertical-align:-4px}
 .title-cores .t{width:20px;position:relative}
 .title-cores img{width:20px;height:26px;object-fit:contain;background:rgba(10,14,38,.9);border-radius:5px;display:block;
       border:1px solid var(--line-2)}
 .title-cores .t.special::after{content:"～";position:absolute;left:-5px;top:-5px;font-size:10px;line-height:11px;
-      color:#dfe6ff;background:rgba(10,14,38,.95);border:1px solid var(--line);border-radius:4px;padding:0 2px}
+      color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:0 2px}
 .tilecards{display:flex;gap:10px;align-items:flex-start}
 .tilecards .thumbs{flex:1;min-width:0}
 .leftcol{display:flex;flex-direction:column;gap:7px;width:46px;flex:0 0 auto;
@@ -145,22 +154,22 @@ header h1{
 .vb{position:absolute;left:-3px;top:-3px;width:15px;height:15px;border-radius:50%;font-size:9px;line-height:15px;
       text-align:center;font-weight:800;color:#fff;border:1px solid rgba(0,0,0,.45);z-index:2}
 .vb.evo{background:var(--evo)} .vb.hero{background:var(--hero);color:#2b1c00} .vb.champ{background:var(--champ);color:#04202e}
-.warnline{margin-top:8px;font-size:11px;color:#ffb9c0}
+.warnline{margin-top:8px;font-size:11px;color:var(--red)}
 .ops{position:absolute;top:10px;right:10px;display:flex;gap:6px;z-index:3}
 .opbtn{border:1px solid var(--line-2);border-radius:999px;padding:3px 11px;font-size:11.5px;cursor:pointer;
-      background:rgba(10,14,38,.65);color:#cfd8ff;transition:.16s;backdrop-filter:blur(4px)}
-.opbtn:hover{border-color:var(--gold);color:#fff;background:rgba(245,185,60,.16)}
+      background:var(--panel-2);color:var(--muted);transition:.16s;backdrop-filter:blur(4px)}
+.opbtn:hover{border-color:var(--gold);color:var(--text);background:rgba(245,185,60,.16)}
 .opbtn.del{color:#ffc2c9;border-color:rgba(239,75,92,.45)}
 .opbtn.del:hover{background:rgba(239,75,92,.2);border-color:var(--red)}
 
 /* ---------- 空态 / 开发中 ---------- */
-.devbox{margin:20px 0;padding:42px 20px;text-align:center;color:#aab6e6;font-size:14px;
+.devbox{margin:20px 0;padding:42px 20px;text-align:center;color:var(--muted);font-size:14px;
       border:1px dashed var(--line);border-radius:var(--r-lg);
       background:linear-gradient(180deg,rgba(29,39,82,.35),rgba(16,22,52,.25))}
 .decks:empty + .devbox{display:block}
 .emptybox{margin:20px 0;padding:40px 20px;text-align:center;border:1px dashed var(--line);border-radius:var(--r-lg);
       background:linear-gradient(180deg,rgba(29,39,82,.3),rgba(16,22,52,.2))}
-.emptybox .etitle{font-size:15px;font-weight:700;color:#e7ecff;margin-bottom:6px}
+.emptybox .etitle{font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px}
 .emptybox .etext{font-size:12.5px;color:var(--muted);margin-bottom:14px}
 
 /* ---------- 弹窗 ---------- */
@@ -172,12 +181,12 @@ dialog::backdrop{background:rgba(3,6,20,.74);backdrop-filter:blur(3px)}
 .dlg-head h3{margin:0;font-size:16.5px;font-weight:700}
 .dlg-head .close{margin-left:auto;background:rgba(10,14,38,.6);border:1px solid var(--line-2);color:var(--muted);
       font-size:17px;line-height:1;width:30px;height:30px;border-radius:50%;cursor:pointer;transition:.16s}
-.dlg-head .close:hover{color:#fff;border-color:var(--gold)}
+.dlg-head .close:hover{color:var(--text);border-color:var(--gold)}
 .dlg-body{padding:18px;max-height:74vh;overflow:auto}
 .cards8{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
 .cards8 .c{background:rgba(10,14,38,.7);border:1px solid var(--line-2);border-radius:var(--r-md);padding:7px;text-align:center;position:relative}
 .cards8 img{width:100%;aspect-ratio:3/4;object-fit:contain}
-.cards8 .nm{font-size:11px;color:#cfd7ff;margin-top:5px;line-height:1.3}
+.cards8 .nm{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.3}
 .cards8 .cost{display:inline-block;background:rgba(168,85,247,.16);color:#e6a6ff;font-size:10px;border-radius:8px;padding:0 7px;margin-top:4px}
 .cards8 .c .vb{left:4px;top:4px}
 .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
@@ -207,7 +216,7 @@ dialog::backdrop{background:rgba(3,6,20,.74);backdrop-filter:blur(3px)}
 .picker .grid .c.sel{border-color:var(--gold)}
 .picker .grid .c .ck{position:absolute;top:2px;right:2px;background:var(--gold);color:#241a00;border-radius:50%;
       width:17px;height:17px;font-size:11px;line-height:17px;text-align:center;font-weight:800}
-.picker .grid .c .cn{font-size:9px;color:#aab6e6;text-align:center;padding:1px 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.picker .grid .c .cn{font-size:9px;color:var(--muted);text-align:center;padding:1px 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .selwrap{display:flex;gap:14px;align-items:flex-start}
 .selrow{display:grid;grid-template-columns:repeat(4,84px);gap:8px;align-items:start;padding:2px}
 .selrow .s{position:relative;border:1px solid var(--line);border-radius:var(--r-md);padding:4px;background:rgba(255,255,255,.02);transition:.15s}
@@ -220,7 +229,7 @@ dialog::backdrop{background:rgba(3,6,20,.74);backdrop-filter:blur(3px)}
       background:rgba(255,255,255,.03);color:#5a6795;font-size:20px}
 .selrow .s .starbar{display:flex;gap:3px;margin-top:5px;justify-content:center;flex-wrap:wrap}
 .star{font-size:13px;line-height:18px;padding:0 5px;border-radius:6px;border:1px solid var(--line-2);
-      background:rgba(29,39,82,.85);color:#8d97b8;cursor:pointer;transition:.14s}
+      background:var(--panel-2);color:var(--dim);cursor:pointer;transition:.14s}
 .star:hover{border-color:var(--gold)}
 .star.silver{color:#c9d3ea}
 .star.purple{color:var(--evo)}
@@ -229,7 +238,7 @@ dialog::backdrop{background:rgba(3,6,20,.74);backdrop-filter:blur(3px)}
 .star:disabled{opacity:.28;cursor:not-allowed;box-shadow:none}
 span.star{cursor:default}
 .selrow .s .mvbar{display:flex;gap:3px;margin-top:5px}
-.selrow .s .mv{flex:1;background:rgba(29,39,82,.85);border:1px solid var(--line-2);color:var(--text);
+.selrow .s .mv{flex:1;background:var(--panel-2);border:1px solid var(--line-2);color:var(--text);
       border-radius:6px;font-size:10px;line-height:16px;padding:0;cursor:pointer;transition:.14s}
 .selrow .s .mv:hover{border-color:var(--gold)}
 .selrow .empty{color:var(--muted);font-size:12px}
@@ -248,10 +257,10 @@ span.star{cursor:default}
 .hint{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.7}
 
 /* ---------- 设置 ---------- */
-.settings .sethint{font-size:12.5px;color:#cdd6ff;background:rgba(79,125,255,.1);border:1px solid var(--line-2);
+.settings .sethint{font-size:12.5px;color:var(--text);background:rgba(79,125,255,.1);border:1px solid var(--line-2);
       border-radius:var(--r-md);padding:10px 12px;line-height:1.6}
 .settings .sec{border-top:1px solid var(--line-2);margin-top:16px;padding-top:14px}
-.settings .sec h4{margin:0 0 8px;font-size:13px;color:#cdd6ff;letter-spacing:.4px}
+.settings .sec h4{margin:0 0 8px;font-size:13px;color:var(--muted);letter-spacing:.4px}
 .f2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .f3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 .switch{display:flex;align-items:center;gap:8px;margin:10px 0;font-size:13px}
@@ -259,13 +268,55 @@ span.star{cursor:default}
 table.rules{width:100%;border-collapse:collapse;font-size:12px}
 table.rules th,table.rules td{border-bottom:1px solid var(--line-2);padding:7px 4px;text-align:center}
 table.rules th{color:var(--muted);font-weight:600}
-table.rules td.pos{color:#cdd6ff}
+table.rules td.pos{color:var(--text)}
 .toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%) translateY(8px);
-      background:linear-gradient(180deg,#1b2450,#141b40);border:1px solid var(--line);color:#fff;
+      background:var(--panel-2);border:1px solid var(--line);color:var(--text);
       padding:11px 20px;border-radius:999px;font-size:13px;opacity:0;pointer-events:none;transition:.25s;z-index:99;
       box-shadow:0 14px 34px -14px #000}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 footer{margin-top:40px;border-top:1px solid var(--line-2);padding-top:16px;font-size:12px;color:var(--muted)}
+
+/* 亮色主题局部微调 */
+:root[data-theme="light"] .fpanel{background:linear-gradient(180deg,#ffffff,#f2f7ff)}
+:root[data-theme="light"] .deck{background:linear-gradient(180deg,#ffffff,#f6f9ff)}
+:root[data-theme="light"] .deck::before{background:linear-gradient(180deg,rgba(255,255,255,.85),transparent 45%)}
+:root[data-theme="light"] .t img,
+:root[data-theme="light"] .tower-mini img,
+:root[data-theme="light"] .title-cores img,
+:root[data-theme="light"] .cards8 .c,
+:root[data-theme="light"] .selrow .s img,
+:root[data-theme="light"] .towerslot img,
+:root[data-theme="light"] .picker .grid .c,
+:root[data-theme="light"] .picker .grid .c img{background:#eef3fe;border-color:rgba(120,142,205,.35)}
+:root[data-theme="light"] .vb{border-color:rgba(255,255,255,.85)}
+:root[data-theme="light"] .title-cores .t.special::after{background:#fff;border-color:var(--line);color:#33406b}
+:root[data-theme="light"] .chip,
+:root[data-theme="light"] .opbtn,
+:root[data-theme="light"] .ghostbtn,
+:root[data-theme="light"] .star,
+:root[data-theme="light"] .mv,
+:root[data-theme="light"] .themebtn{background:#fff;color:#33406b}
+:root[data-theme="light"] .chip:hover,
+:root[data-theme="light"] .opbtn:hover{border-color:var(--gold);color:#0f1633}
+:root[data-theme="light"] .picker{background:linear-gradient(180deg,#f7faff,#eef3fe)}
+:root[data-theme="light"] dialog{background:linear-gradient(180deg,#ffffff,#f7f9ff)}
+:root[data-theme="light"] .dlg-head{background:linear-gradient(180deg,rgba(120,142,205,.12),transparent)}
+:root[data-theme="light"] .dlg-head .close{background:#fff;color:#5b6893}
+:root[data-theme="light"] .linkbox{background:#f4f7ff;color:#2c3f88;border-color:var(--line-2)}
+:root[data-theme="light"] .toast{background:#fff;color:#0f1633;border-color:var(--line)}
+:root[data-theme="light"] .tabs{background:rgba(255,255,255,.85)}
+:root[data-theme="light"] .tabs .tab.on{color:#fff}
+:root[data-theme="light"] .devbox,
+:root[data-theme="light"] .emptybox{background:linear-gradient(180deg,#f8faff,#eef3fe)}
+:root[data-theme="light"] .editor input[type=text],
+:root[data-theme="light"] .editor textarea,
+:root[data-theme="light"] .settings input[type=text]{background:#fff}
+:root[data-theme="light"] .selrow .s{background:#fff}
+:root[data-theme="light"] .selrow .s.empty .ph{background:rgba(120,142,205,.08)}
+:root[data-theme="light"] .towerslot{background:linear-gradient(180deg,rgba(79,125,255,.12),rgba(79,125,255,.04))}
+:root[data-theme="light"] .towerslot select,
+:root[data-theme="light"] .fbar select{background:#fff;color:#0f1633}
+:root[data-theme="light"] code{color:#2c3f88}
 
 @media (max-width:620px){
   header h1{font-size:22px}
@@ -451,6 +502,18 @@ footer{margin-top:40px;border-top:1px solid var(--line-2);padding-top:16px;font-
       </div>
     </div>
     </div><!-- /.adv -->
+  </div>
+</dialog>
+
+<dialog id="copyDlg" class="settings">
+  <div class="dlg-head"><h3>复制到哪里？</h3><button class="close" data-close="copyDlg">×</button></div>
+  <div class="dlg-body">
+    <div class="sethint" id="copyDlgName"></div>
+    <div class="actions" style="margin-top:14px">
+      <button class="btn primary" id="copyTo1v1">1v1 · 我的卡组</button>
+      <button class="btn ghost" id="copyToDuel" disabled title="决斗卡组正在开发中">决斗卡组 · 开发中</button>
+    </div>
+    <div class="hint">「决斗卡组」还在开发中，暂时只能复制到 1v1。2v2 的 HOT 卡组会直接复制到 2v2。</div>
   </div>
 </dialog>
 
@@ -997,6 +1060,12 @@ const TABS = {
 };
 let activeTab = "1v1";
 
+let pendingCopyDeck = null;
+function openCopyChooser(deck){
+  pendingCopyDeck = deck;
+  $("#copyDlgName").innerHTML = `卡组：<b>${escapeHtml(deck.name)}</b>`;
+  $("#copyDlg").showModal();
+}
 function copyDeckInto(deck, fromHot){
   const base = deck.name.replace(/\s*·\s*复制\s*$/, "");
   let name = base, n = 2;
@@ -1064,7 +1133,11 @@ decksEl.addEventListener("click", e => {
   const btn = e.target.closest(".opbtn");
   if(btn){
     e.stopPropagation();
-    if(btn.classList.contains("copy")){ copyDeckInto(deck, !!metaName); return; }
+    if(btn.classList.contains("copy")){
+      if(metaName) openCopyChooser(deck);      // HOT 卡组：先问复制到哪里
+      else copyDeckInto(deck, false);          // 自己的卡组：直接再复制一份
+      return;
+    }
     if(btn.classList.contains("del")){
       const idx = Number(card.dataset.i);
       if(confirm(`删除卡组「${decks[idx].name}」？`)){ decks.splice(idx, 1); saveDecks(decks); render(); toast("已删除"); }
@@ -1588,12 +1661,21 @@ function applyTheme(t){
   document.documentElement.dataset.theme = t;
   try { localStorage.setItem(LS_THEME, t); } catch {}
 }
-let curTheme = (() => { try { return localStorage.getItem(LS_THEME) || "space"; } catch { return "space"; } })();
+const THEMES = [["light", "亮色"], ["space", "深空"], ["neon", "霓虹"]];
+let curTheme = (() => { try { return localStorage.getItem(LS_THEME) || "light"; } catch { return "light"; } })();
+if(!THEMES.some(t => t[0] === curTheme)) curTheme = "light";
 applyTheme(curTheme);
+$("#themeBtn").title = "切换主题：" + THEMES.map(t => t[1]).join(" → ");
+$("#copyTo1v1").addEventListener("click", () => {
+  const d = pendingCopyDeck;
+  $("#copyDlg").close();
+  if(d) copyDeckInto(d, true);
+});
 $("#themeBtn").addEventListener("click", () => {
-  curTheme = curTheme === "space" ? "neon" : "space";
+  const i = THEMES.findIndex(t => t[0] === curTheme);
+  curTheme = THEMES[(i + 1) % THEMES.length][0];
   applyTheme(curTheme);
-  toast(curTheme === "neon" ? "主题：霓虹" : "主题：深空");
+  toast("主题：" + THEMES.find(t => t[0] === curTheme)[1]);
 });
 
 buildDeckFilter();
