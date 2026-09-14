@@ -6,7 +6,7 @@
 <title>皇室战争 · 卡组一键导入</title>
 <style>
 :root{
-  --bg:#070a18; --bg2:#0b1024;
+  --bg:#070a18; --bg2:#0b1024; --glow1:rgba(79,125,255,.16); --glow2:rgba(245,185,60,.10);
   --panel:rgba(21,28,64,.72); --panel-2:rgba(29,39,82,.85); --line:rgba(70,88,150,.55); --line-2:rgba(70,88,150,.3);
   --text:#eef1ff; --muted:#95a2d0; --dim:#6e7cab;
   --gold:#f5b93c; --blue:#4f7dff; --green:#31c46f; --red:#ef4b5c;
@@ -14,15 +14,24 @@
   --r-lg:18px; --r-md:12px; --r-sm:8px;
   --sh:0 10px 30px -12px rgba(0,0,0,.75);
 }
+/* 主题二：霓虹（暗紫 + 青 / 紫光） */
+:root[data-theme="neon"]{
+  --bg:#07040f; --bg2:#150a2e; --glow1:rgba(34,211,238,.14); --glow2:rgba(192,132,252,.18);
+  --panel:rgba(40,22,74,.72); --panel-2:rgba(56,30,98,.85);
+  --line:rgba(150,110,235,.5); --line-2:rgba(150,110,235,.26);
+  --text:#f5f0ff; --muted:#b9a9e6; --dim:#8b7bbb;
+  --gold:#c084fc; --blue:#22d3ee; --green:#34d399; --red:#fb7185;
+}
 *{box-sizing:border-box}
 html,body{height:100%}
 body{
   margin:0;color:var(--text);
   background:
-    radial-gradient(1100px 520px at 12% -8%,rgba(79,125,255,.16),transparent 60%),
-    radial-gradient(900px 480px at 92% 4%,rgba(245,185,60,.10),transparent 62%),
+    radial-gradient(1100px 520px at 12% -8%,var(--glow1),transparent 60%),
+    radial-gradient(900px 480px at 92% 4%,var(--glow2),transparent 62%),
     linear-gradient(180deg,var(--bg) 0%,var(--bg2) 45%,var(--bg) 100%);
   background-attachment:fixed;
+  transition:background .25s ease;
   font:15px/1.6 system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
   -webkit-font-smoothing:antialiased;
 }
@@ -33,6 +42,11 @@ body{
 a{color:var(--gold);text-decoration:none}
 code{font-family:ui-monospace,Menlo,Consolas,monospace;color:#bcd0ff}
 .wrap{max-width:1100px;margin:0 auto;padding:26px 18px 64px}
+.hero{display:flex;align-items:center;gap:14px}
+.hero h1{flex:1;min-width:0}
+.themebtn{flex:0 0 auto;width:38px;height:38px;border-radius:50%;border:1px solid var(--line);
+      background:rgba(29,39,82,.7);color:#dbe2ff;font-size:17px;cursor:pointer;transition:.18s}
+.themebtn:hover{border-color:var(--gold);color:#fff;transform:rotate(180deg)}
 
 /* ---------- 头部 ---------- */
 header h1{
@@ -100,7 +114,8 @@ header h1{
 
 /* ---------- 卡组卡片 ---------- */
 .decks{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:14px}
-.deck{position:relative;background:linear-gradient(180deg,rgba(24,32,72,.85),rgba(16,22,52,.85));
+.deck{position:relative;content-visibility:auto;contain-intrinsic-size:auto 150px;
+      background:linear-gradient(180deg,rgba(24,32,72,.85),rgba(16,22,52,.85));
       border:1px solid var(--line-2);border-radius:var(--r-lg);padding:13px 14px 12px;cursor:pointer;
       transition:transform .18s,border-color .18s,box-shadow .18s;box-shadow:var(--sh)}
 .deck::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
@@ -265,7 +280,10 @@ footer{margin-top:40px;border-top:1px solid var(--line-2);padding-top:16px;font-
 <body>
 <div class="wrap">
   <header>
-    <h1>Clash Royale Deck Build &amp; Copy</h1>
+    <div class="hero">
+      <h1>Clash Royale Deck Build &amp; Copy</h1>
+      <button class="themebtn" id="themeBtn" title="切换主题：深空 / 霓虹">◐</button>
+    </div>
     <div class="hintbox">
       <b>电脑端：</b>选择某卡组 → 手机扫二维码 → 点页面上的 “Copy the deck” → 游戏弹出并载入卡组。<br>
       <b>手机端（安卓）：</b>选择某卡组 → 点 “在手机上导入” → 跳到游戏载入卡组。
@@ -728,6 +746,7 @@ const META_SPELLS = [28000000, 28000001, 28000002, 28000003, 28000004, 28000005,
 /* ---------- 基础工具 ---------- */
 const $ = s => document.querySelector(s);
 const byId = new Map(CARDS.map(c => [c.id, c]));
+const deckHtmlCache = new Map();          // 卡片 HTML 缓存（筛选/切页复用，saveDecks 时清空）
 const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
 const STAR_CLS = { "": "silver", evo: "purple", hero: "orange", champ: "orange" };
@@ -751,7 +770,7 @@ function thumbHtml(cardOrId, v, thumbHint){
   const onerr = `if(!this.dataset.f){this.dataset.f=1;this.src='https://cdn.royaleapi.com/static/img/cards-150/${c.slug}.png'}else{this.style.visibility='hidden'}`;
   const costTxt = (typeof c.cost === "number" ? c.cost : "?");
   return `<div class="t ${vv}" title="${escapeHtml(c.name)}（${costTxt} 费）${vv ? " · " + VARIANTS[vv].label : ""}${thumbHint ? "\n点击清空这一格" : ""}">
-      ${badgeHtml(vv)}<img loading="lazy" src="${imgOf(c, vv)}" alt="${escapeHtml(c.name)}" onerror="${onerr}"></div>`;
+      ${badgeHtml(vv)}<img loading="lazy" decoding="async" src="${imgOf(c, vv)}" alt="${escapeHtml(c.name)}" onerror="${onerr}"></div>`;
 }
 function imgOf(card, v){
   if(!card) return "";
@@ -890,6 +909,7 @@ function notifyRepairs(){
   }
 }
 function saveDecks(list){
+  deckHtmlCache.clear();
   try { localStorage.setItem(LS_DECKS, JSON.stringify(list)); return true; }
   catch { toast("无法写入浏览器存储：请改用 http(s) 打开页面"); return false; }
 }
@@ -948,17 +968,21 @@ function deckMatchFilter(deck){
   }
   return true;
 }
-function renderDeckFilter(){
+function buildDeckFilter(){
   const chip = id => {
-    const m = DPICK[id] || 0;
-    const c = byId.get(id);
-    const nm = c ? c.name : String(id);
-    const state = m === 1 ? "只看有它（点击切换为“只看没有”）" : m === -1 ? "只看没有它（点击取消）" : "点击：只看有它";
-    return `<span class="chip ${m === 1 ? "on" : m === -1 ? "ex" : ""}" data-pid="${id}" title="${escapeHtml(nm)}：${state}">
-      <img loading="lazy" src="${imgOf(c)}" alt=""><span class="cn">${escapeHtml(nm)}</span></span>`;
+    const c = byId.get(id), nm = c ? c.name : String(id);
+    return `<span class="chip" data-pid="${id}" title="${escapeHtml(nm)}：点一下只看有它 ｜ 再点只看没有它 ｜ 第三下取消">
+      <img loading="lazy" decoding="async" src="${imgOf(c)}" alt=""><span class="cn">${escapeHtml(nm)}</span></span>`;
   };
   $("#fCores").innerHTML = META_CORES.map(chip).join("");
   $("#fSpells").innerHTML = META_SPELLS.map(chip).join("");
+}
+function syncDeckFilter(){       // 只切类名，不重建 DOM
+  document.querySelectorAll("#fCores .chip, #fSpells .chip").forEach(el => {
+    const m = DPICK[el.dataset.pid] || 0;
+    el.classList.toggle("on", m === 1);
+    el.classList.toggle("ex", m === -1);
+  });
   const n = Object.keys(DPICK).length;
   $("#fCount").textContent = n ? `已选 ${n} 项筛选` : "";
   $("#fClear").style.display = n ? "" : "none";
@@ -985,68 +1009,104 @@ function copyDeckInto(deck, fromHot){
   toast(`已复制「${base}」到「我的卡组」`);
 }
 
+/* 性能：内置卡组只在首次用到时规范化一次 */
+const metaNormCache = new Map();
+function deckKey(deck, user){
+  return (user ? "u|" : "h|") + deck.name + "|" + deck.tower + "|" +
+    deck.cards.map(c => c.id + c.v).join(",");
+}
+function deckHtmlCached(deck, i, user){
+  const k = deckKey(deck, user);
+  let h = deckHtmlCache.get(k);
+  if(!h){ h = deckCardHtml(deck, i, user); deckHtmlCache.set(k, h); }
+  return h;
+}
+function metaNorm(d){
+  let v = metaNormCache.get(d.name);
+  if(!v){ v = normDeck(d); metaNormCache.set(d.name, v); }
+  return v;
+}
+
+let renderToken = 0;
+const defer = (typeof window !== "undefined" && window.requestIdleCallback)
+  ? cb => window.requestIdleCallback(cb, { timeout: 200 })
+  : cb => setTimeout(cb, 1);
+
+function deckCardHtml(deck, i, user){
+  const cores = deck.cards.filter(c => (byId.get(c.id) || {}).core);
+  const warns = deckWarnings(deck);
+  const coreHtml = cores.map(c => thumbHtml(c.id, effectiveVariant(deck.cards.indexOf(c), c.id, c.v))
+      .replace('class="t', (byId.get(c.id) || {}).special ? 'class="t special' : 'class="t')).join("");
+  const tw = deck.tower ? byId.get(deck.tower) : null;
+  return `<div class="deck" data-i="${user ? i : ""}" data-name="${user ? "" : escapeHtml(deck.name)}">
+    <div class="title"><span class="tname">${escapeHtml(deck.name)}</span>${cores.length ? `<span class="title-cores">${coreHtml}</span>` : ""}</div>
+    <div class="tilecards">
+      <div class="leftcol">${tw ? `<div class="tower-mini" title="塔防：${escapeHtml(tw.name)}">${thumbHtml(deck.tower, "")}</div>` : ""}</div>
+      <div class="thumbs">${deck.cards.map((c, k) => thumbHtml(c.id, effectiveVariant(k, c.id, c.v))).join("")}</div>
+    </div>
+    ${warns.length ? `<div class="warnline">⛔ ${escapeHtml(warns[0])}</div>` : ""}
+    <div class="ops">
+      <button class="opbtn copy" title="复制到「我的卡组」">复制</button>
+      ${user ? `<button class="opbtn edit" title="载入编辑器">编辑</button>
+      <button class="opbtn del">删除</button>` : ""}
+    </div>
+  </div>`;
+}
+
+/* 事件委托：整个列表只挂一个监听器 */
+decksEl.addEventListener("click", e => {
+  const card = e.target.closest(".deck");
+  if(!card) return;
+  const metaName = card.dataset.name || "";
+  const deck = metaName ? metaNorm(META_DECKS.find(d => d.name === metaName))
+                        : decks[Number(card.dataset.i)];
+  if(!deck) return;
+  const btn = e.target.closest(".opbtn");
+  if(btn){
+    e.stopPropagation();
+    if(btn.classList.contains("copy")){ copyDeckInto(deck, !!metaName); return; }
+    if(btn.classList.contains("del")){
+      const idx = Number(card.dataset.i);
+      if(confirm(`删除卡组「${decks[idx].name}」？`)){ decks.splice(idx, 1); saveDecks(decks); render(); toast("已删除"); }
+      return;
+    }
+    if(btn.classList.contains("edit")){
+      if(metaName) openEditor(metaNorm(META_DECKS.find(d => d.name === metaName)), metaName);
+      else openEditor(decks[Number(card.dataset.i)]);
+      return;
+    }
+    return;
+  }
+  openDetail(deck);
+});
+
 function render(){
-  decksEl.innerHTML = "";
+  const token = ++renderToken;                 // 先失效上一轮的分批任务
   const tab = TABS[activeTab];
   document.querySelectorAll("#tabs .tab").forEach(t => t.classList.toggle("on", t.dataset.tab === activeTab));
   $("#secTitle").textContent = tab.title;
   $("#addBtn").style.display = tab.kind === "mine" ? "" : "none";
-  $("#filterPanel").style.display = tab.kind === "hot" ? "" : "none";
+  $("#filterPanel").style.display = "";                     // 所有标签页都有卡组筛选
+  syncDeckFilter();
   $("#devbox").style.display = tab.kind === "dev" ? "" : "none";
-  if(tab.kind === "dev"){ $("#emptybox").style.display = "none"; return; }
+  if(tab.kind === "dev"){ decksEl.innerHTML = ""; $("#emptybox").style.display = "none"; return; }
   $("#emptybox").style.display = (tab.kind === "mine" && decks.length === 0) ? "" : "none";
-  const metas = META_DECKS.filter(d => !metaHidden.has(d.name));
-  renderDeckFilter();
   const items = (tab.kind === "mine"
     ? decks.map((d, i) => ({ deck: d, i, user: true }))
-    : metas.map(d => ({ deck: normDeck(d), user: false }))
-  ).filter(it => tab.kind === "mine" ? true : deckMatchFilter(it.deck));
-  items.forEach(({ deck, i, user }) => {
-    const cores = deck.cards.filter(c => (byId.get(c.id) || {}).core);
-    const el = document.createElement("div");
-    el.className = "deck";
-    el.innerHTML = `
-      <div class="title"><span class="tname">${escapeHtml(deck.name)}</span>${cores.length ? `<span class="title-cores">${cores.map(c => thumbHtml(c.id, effectiveVariant(deck.cards.indexOf(c), c.id, c.v)).replace('class="t', (byId.get(c.id) || {}).special ? 'class="t special' : 'class="t')).join("")}</span>` : ""}</div>
-      <div class="tilecards">
-        <div class="leftcol">
-          ${deck.tower ? `<div class="tower-mini" title="塔防：${escapeHtml((byId.get(deck.tower) || {}).name || "")}">${thumbHtml(deck.tower, "")}</div>` : ""}
-        </div>
-        <div class="thumbs">${deck.cards.map((c, k) => thumbHtml(c.id, effectiveVariant(k, c.id, c.v))).join("")}</div>
-      </div>
-      ${deckWarnings(deck).length ? `<div class="warnline">⛔ ${escapeHtml(deckWarnings(deck)[0])}</div>` : ""}
-      <div class="ops">
-        <button class="opbtn copy" data-i="${i}" data-meta="${user ? "" : escapeHtml(deck.name)}" title="复制到「我的卡组」">复制</button>
-        <button class="opbtn edit" data-i="${i}" data-meta="${user ? "" : escapeHtml(deck.name)}" title="载入编辑器">编辑</button>
-        ${user ? `<button class="opbtn del" data-i="${i}">删除</button>` : ""}
-      </div>`;
-    el.addEventListener("click", e => {
-      const btn = e.target.closest(".opbtn");
-      if(btn){
-        e.stopPropagation();
-        const metaName = btn.dataset.meta;
-        if(btn.classList.contains("copy")){
-          copyDeckInto(deck, !!metaName);
-          return;
-        }
-        if(btn.classList.contains("del")){
-          if(metaName){
-            if(confirm(`从列表里移除内置卡组「${metaName}」？（可用「⚙ 设置 → 恢复内置卡组」找回）`)){
-              metaHidden.add(metaName); saveMetaHidden(); render(); toast("已移除");
-            }
-          } else {
-            const idx = Number(btn.dataset.i);
-            if(confirm(`删除卡组「${decks[idx].name}」？`)){ decks.splice(idx, 1); saveDecks(decks); render(); toast("已删除"); }
-          }
-        } else {
-          if(metaName) openEditor(normDeck(deck), metaName);
-          else openEditor(decks[Number(btn.dataset.i)]);
-        }
-        return;
-      }
-      openDetail(deck);
-    });
-    decksEl.appendChild(el);
-  });
+    : META_DECKS.map(d => ({ deck: metaNorm(d), user: false }))
+  ).filter(it => deckMatchFilter(it.deck));
+  // 首屏先渲染一批，其余在空闲时追加（长列表也不卡）
+  const BATCH = 12;
+  const htmlOf = it => deckHtmlCached(it.deck, it.i, it.user);
+  decksEl.innerHTML = items.slice(0, BATCH).map(htmlOf).join("");
+  let idx = BATCH;
+  const step = () => {
+    if(token !== renderToken || idx >= items.length) return;
+    decksEl.insertAdjacentHTML("beforeend", items.slice(idx, idx + BATCH).map(htmlOf).join(""));
+    idx += BATCH;
+    defer(step);
+  };
+  if(idx < items.length) defer(step);
 }
 
 /* ---------- 详情 ---------- */
@@ -1426,7 +1486,11 @@ document.addEventListener("click", e => {
   revalidateSelection();
   renderPicker();
 });
-$("#eSearch").addEventListener("input", renderPicker);
+let searchTimer = null;
+$("#eSearch").addEventListener("input", () => {            // 防抖，输入更顺滑
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(renderPicker, 120);
+});
 $("#eTower").addEventListener("change", e => {
   const sel = e.target.closest("#eTowerSel");
   if(!sel) return;
@@ -1518,6 +1582,21 @@ const APP_VERSION = "v6 · 2026-09-13";
 $("#ver").textContent = "版本 " + APP_VERSION;
 console.log("cr-copy-deck", APP_VERSION);
 
+/* ---------- 主题 ---------- */
+const LS_THEME = "cr_theme";
+function applyTheme(t){
+  document.documentElement.dataset.theme = t;
+  try { localStorage.setItem(LS_THEME, t); } catch {}
+}
+let curTheme = (() => { try { return localStorage.getItem(LS_THEME) || "space"; } catch { return "space"; } })();
+applyTheme(curTheme);
+$("#themeBtn").addEventListener("click", () => {
+  curTheme = curTheme === "space" ? "neon" : "space";
+  applyTheme(curTheme);
+  toast(curTheme === "neon" ? "主题：霓虹" : "主题：深空");
+});
+
+buildDeckFilter();
 render();
 notifyRepairs();
 </script>
