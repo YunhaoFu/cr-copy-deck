@@ -166,7 +166,7 @@ clashroyale://copyDeck?deck=27000002;26000023;...;28000015&l=Royals&tt=159000000
 
 每枚标签**点一下 = 只看有它（✓ 绿色高亮）**，**再点 = 只看没有它（图标变灰 + 名称划线 + ／）**，**第三下取消**；多个标签可叠加。
 
-## 卡牌分类与形态（觉醒 / 精英 / 英雄）## 卡牌分类与形态（觉醒 / 精英 / 英雄）## 卡牌分类与形态（觉醒 / 精英 / 英雄）
+## 卡牌分类与形态（觉醒 / 精英 / 英雄）
 
 卡牌分两类：
 
@@ -206,6 +206,62 @@ clashroyale://copyDeck?deck=27000002;26000023;...;28000015&l=Royals&tt=159000000
 「清空我的卡组」只清空你自己创建的卡组（1v1 / 2v2），**不影响 HOT 卡组**。
 
 设置与卡组都存在浏览器 localStorage（`cr_decks_v2` / `cr_settings_v1`），旧版数据（`cr_decks_v1`）会自动迁移。
+
+## 部署（Cloudflare Pages）
+
+线上地址：**https://cr-copy-deck.pages.dev**
+
+架构与 `YunhaoFu/night-maid` 一致：**GitHub 仓库 → Cloudflare Pages（Git 集成）→ push 自动部署**。
+
+| 项目 | 值 |
+|---|---|
+| 仓库 | `github.com/YunhaoFu/cr-copy-deck`（public，`main` 分支） |
+| Pages 项目 | `cr-copy-deck` |
+| Framework preset | None（本项目无框架、零依赖） |
+| Build command | `node scripts/build-site.mjs` |
+| Build output directory | `dist` |
+
+### 本地命令
+
+```bash
+node scripts/validate.mjs     # 零依赖校验：单文件自包含 / 关键钩子 / 数据不变量 / 无敏感串
+node scripts/build-site.mjs   # 生成 dist/index.html（只发布站点文件，不暴露 README、scripts、.git）
+```
+
+### 发版流程
+
+1. 改 `index.html`（如更新卡组数据），并把底部版本号 `APP_VERSION` 递进（例：`v7 · 2026-09-14`）；
+2. `git commit && git push` → GitHub Action 跑 `validate` + `build`；
+3. CI 通过后 Cloudflare Pages 自动构建部署，几十秒后生效；
+4. 用户端若仍是旧版：手机浏览器**硬刷新**（或微信里「在浏览器打开」）。
+
+### 回滚
+
+Cloudflare → Workers & Pages → `cr-copy-deck` → **Deployments** → 选中上一个成功部署 → **Rollback**；
+代码侧也可 `git revert` 后 push。
+
+### 注意：用户数据存在浏览器本地
+
+卡组 / 设置 / 主题都存在 localStorage，**按源（协议+主机+端口）隔离**，所以 `file://`、局域网 `http://192.168.x.x:8000`、
+`https://cr-copy-deck.pages.dev` 三处数据互不相通；换域名也不会跟着走。迁移方法（对你自己同样适用）：
+
+```js
+// 旧地址 Console：
+console.log(localStorage.getItem("cr_decks_v2"))   // 复制整段输出
+// 新地址 Console（粘贴上一步的输出，然后刷新）：
+localStorage.setItem("cr_decks_v2", '<粘贴>')
+// 设置与主题：cr_settings_v1 / cr_theme 同理
+```
+
+### 上线后自检
+
+```bash
+curl -sS -o /dev/null -D - https://cr-copy-deck.pages.dev/ | head -12
+curl -sS -H 'Accept-Encoding: gzip' -o /dev/null -w '%{size_download}\n' https://cr-copy-deck.pages.dev/   # 期望 ~41KB
+```
+
+真机再确认：新建卡组后重开页面仍在、复制链接可用、扫码 → `link.clashroyale.com` → 唤起游戏、
+「在手机上导入」走裸 `clashroyale://` 兜底、卡图正常（失败会自动降级到备用 CDN）。
 
 ## 文件与数据
 
