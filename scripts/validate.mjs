@@ -312,6 +312,9 @@ check(/\.selrow\{grid-template-columns:repeat\(4,1fr\)/.test(mobileCss),
 check(/\.towerslot\{width:100%;display:flex/.test(mobileCss),
   "窄屏下塔防槽改横排（否则里面的卡图被撑到铺满整屏）");
 check(/\.towerslot \.t\{[^}]*width:68px/.test(mobileCss), "窄屏下塔防卡图有固定宽度");
+check(/\.tabs \.tab\{padding:7px 12px/.test(mobileCss), "窄屏下标签页收紧了内边距（否则 HOT 2v2 会被截掉）");
+const narrowCss = html.slice(html.indexOf("@media (max-width:380px)"), html.indexOf("</style>", html.indexOf("@media (max-width:380px)")));
+check(/\.tabs \.tab\{padding:7px 9px/.test(narrowCss), "380px 以下再收一档（小屏安卓机 / iPhone SE）");
 
 // J3 卡组卡片按钮语义
 const dchIdx = html.indexOf("function deckCardHtml");

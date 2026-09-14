@@ -407,6 +407,34 @@ try {
   check("13.1 设备A 无 JS 报错", errsA.length === 0, JSON.stringify(errsA.slice(0, 3)));
   check("13.2 设备B 无 JS 报错", errsB.length === 0, JSON.stringify(errsB.slice(0, 3)));
 
+  section("13.5 手机端排版（393×851）");
+  {
+    await D.page.setViewport({ width: 393, height: 851, isMobile: true, hasTouch: true });
+    await D.page.evaluate(() => { activeTab = "1v1"; render(); });
+    await sleep(600);
+    const fit = await D.page.evaluate(() => {
+      const tabs = document.querySelector("#tabs");
+      const last = tabs.querySelector(".tab:last-child").getBoundingClientRect();
+      const box = tabs.getBoundingClientRect();
+      const wrap = document.querySelector(".wrap").getBoundingClientRect();
+      const decks = [...document.querySelectorAll("#decks .deck")].map(d => d.getBoundingClientRect());
+      return {
+        lastTabRight: Math.round(last.right),
+        tabsRight: Math.round(box.right),
+        tabsScrollW: tabs.scrollWidth,
+        tabsClientW: tabs.clientWidth,
+        deckOverflow: decks.filter(d => Math.round(d.right) > Math.round(wrap.right) + 1).length,
+        tabLabels: [...tabs.querySelectorAll(".tab")].map(t => t.textContent.trim()),
+      };
+    });
+    check("13.5.1 手机上 5 个标签都放得下（HOT 2v2 不被截）",
+      fit.lastTabRight <= fit.tabsRight + 1 && fit.tabsScrollW <= fit.tabsClientW + 1, JSON.stringify(fit));
+    check("13.5.2 五个标签齐全且顺序不变",
+      fit.tabLabels.join(",") === "1v1,HOT 1v1,决斗卡组,2v2,HOT 2v2", fit.tabLabels.join(","));
+    check("13.5.3 卡组卡片没有横向溢出", fit.deckOverflow === 0, `溢出 ${fit.deckOverflow} 张`);
+    await D.page.setViewport({ width: 1360, height: 950 });
+  }
+
   section("14 截图（三套主题 + 账号弹窗）");
   const shot = join(root, "dist");
   await D.page.evaluate(() => {

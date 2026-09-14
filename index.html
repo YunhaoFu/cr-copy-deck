@@ -386,6 +386,10 @@ footer{margin-top:40px;border-top:1px solid var(--line-2);padding-top:16px;font-
 
 @media (max-width:620px){
   header h1{font-size:22px}
+  /* 5 个标签在 393px 宽的机型上总宽放不下，「HOT 2v2」会被截掉只剩一个字。
+     容器虽然能横向滚动，但手机上滚不动也看不出来 —— 直接缩小内边距让它们全放下。 */
+  .tabs{margin-top:18px;gap:4px;padding:4px;border-radius:999px}
+  .tabs .tab{padding:7px 12px;font-size:12.5px;letter-spacing:0}
   .decks{grid-template-columns:1fr}
   .deck .title{padding-right:0}
   .selwrap{flex-direction:column;align-items:stretch;gap:10px}
@@ -402,6 +406,13 @@ footer{margin-top:40px;border-top:1px solid var(--line-2);padding-top:16px;font-
   .f3,.f2{grid-template-columns:1fr}
   /* 窄屏下 8 格选卡每格小，星标跟着缩一点，免得换行 */
   .star{font-size:12px;padding:0 4px}
+}
+
+/* 再窄一档（iPhone SE / 360px 安卓机）：`.wrap` 左右各有内边距，
+   上面那档的标签宽度在 380px 以下仍然差十几像素，再收一点。 */
+@media (max-width:380px){
+  .tabs .tab{padding:7px 9px;font-size:12px}
+  .wrap{padding-left:12px;padding-right:12px}
 }
 </style>
 <script>
@@ -1857,7 +1868,7 @@ $("#copyBtn").addEventListener("click", () => currentDetailDeck && copyText(webL
 $("#copyDeepBtn").addEventListener("click", () => currentDetailDeck && copyText(deepLink(currentDetailDeck)));
 document.querySelectorAll("[data-close]").forEach(b => b.addEventListener("click", () => $("#" + b.dataset.close).close()));
 
-const APP_VERSION = "v8.2 · 2026-09-14";
+const APP_VERSION = "v8.3 · 2026-09-14";
 $("#ver").textContent = "版本 " + APP_VERSION;
 console.log("cr-copy-deck", APP_VERSION);
 
