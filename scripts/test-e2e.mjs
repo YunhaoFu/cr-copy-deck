@@ -94,7 +94,11 @@ const cloud = page => page.evaluate(async () => {
   return r.ok ? await r.json() : null;
 });
 
-async function waitCloud(page, pred, what, timeout = 15000) {
+// 跑线上时一次 HTTPS 往返要 5–7 秒（本机走代理），超时按环境放宽
+const T_SYNC = REMOTE ? 60000 : 15000;     // 等一次同步落库
+const T_SOON = REMOTE ? 45000 : 12000;     // 等页面状态最终一致
+
+async function waitCloud(page, pred, what, timeout = T_SYNC) {
   const t0 = Date.now();
   let last = null;
   while (Date.now() - t0 < timeout) {
@@ -118,7 +122,7 @@ async function fillAcct(page, { user, pass, pass2 }) {
 }
 
 /** 等页面里的某个条件最终成立（云同步是异步的，不能立刻断言） */
-async function checkSoon(page, fn, name, timeout = 12000) {
+async function checkSoon(page, fn, name, timeout = T_SOON) {
   const t0 = Date.now();
   while (Date.now() - t0 < timeout) {
     if (await page.evaluate(fn).catch(() => false)) return check(name, true);
@@ -129,7 +133,7 @@ async function checkSoon(page, fn, name, timeout = 12000) {
 }
 
 /** 等账号弹窗里出现某段文案（用于"等一次请求失败"这类没有正向信号的场景） */
-async function waitMsg(page, needle, timeout = 20000) {
+async function waitMsg(page, needle, timeout = REMOTE ? 40000 : 20000) {
   const t0 = Date.now();
   while (Date.now() - t0 < timeout) {
     const t = await page.$eval("#acctMsg", e => e.textContent).catch(() => "");
