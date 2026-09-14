@@ -56,7 +56,10 @@ export async function onRequestPut(context) {
   for (const t of rawDeleted) {
     if (!t || !validDeckId(t.id)) return fail("invalid_deck", 400);
     const at = Number(t.at);
-    const stamp = Number.isFinite(at) ? Math.min(Math.max(Math.round(at), 0), now + MAX_SKEW_MS) : now;
+    // 墓碑是破坏性操作：时间戳缺失/非法就明确报错，不要默认成 now ——
+    // 否则畸形客户端能删掉账号里其它设备的数据。客户端本来就总是带 at。
+    if (!Number.isFinite(at)) return fail("invalid_deck", 400);
+    const stamp = Math.min(Math.max(Math.round(at), 0), now + MAX_SKEW_MS);
     deleted.push({ id: t.id, at: stamp });
   }
 
@@ -65,9 +68,11 @@ export async function onRequestPut(context) {
   if (settings && JSON.stringify(settings).length > MAX_SETTINGS_LEN) return fail("too_large", 413);
 
   const theme = validTheme(data.theme) ? String(data.theme) : null;
+  // 非法时间戳一律当 0（永远输），不要回退成 now ——
+  // 回退成 now 等于把畸形客户端当成"此刻的修改"，能顶掉别的设备的新版本。
   const stampOf = v => {
     const n = Number(v);
-    return Number.isFinite(n) ? Math.min(Math.max(Math.round(n), 0), now + MAX_SKEW_MS) : now;
+    return Number.isFinite(n) ? Math.min(Math.max(Math.round(n), 0), now + MAX_SKEW_MS) : 0;
   };
   const settingsAt = stampOf(data.settingsAt);
   const themeAt = stampOf(data.themeAt);

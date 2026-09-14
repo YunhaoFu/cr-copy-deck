@@ -15,7 +15,7 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const outDir = join(root, "dist");
 
-const files = ["index.html", "_routes.json"];
+const files = ["index.html", "_routes.json", "_headers", "404.html", "robots.txt"];
 const sizes = [];
 
 // 先清空产物目录：避免上次构建遗留的文件被一起发布出去
@@ -48,6 +48,40 @@ try {
   }
 } catch (e) {
   console.error("× dist/_routes.json 解析失败：" + e.message);
+  process.exit(1);
+}
+
+// 校验 _headers：安全头写错了不会有任何报错，只会静默失效，所以在这里挡住
+try {
+  const headers = await import("node:fs/promises").then(fs => fs.readFile(join(outDir, "_headers"), "utf8"));
+  const required = [
+    "X-Content-Type-Options: nosniff",
+    "X-Frame-Options: DENY",
+    "Referrer-Policy: no-referrer",
+    "Strict-Transport-Security:",
+    "frame-ancestors 'none'",
+    "base-uri 'none'",
+    "form-action 'none'",
+    "object-src 'none'",
+    "X-Robots-Tag: noindex",
+  ];
+  const missing = required.filter(h => !headers.includes(h));
+  if (missing.length) {
+    console.error("× dist/_headers 缺少必要响应头：" + missing.join(" / "));
+    process.exit(1);
+  }
+  // 注释必须独立成行：缩进在规则块里的 # 会被当成响应头名解析
+  const badComment = headers.split("\n").find(l => /^\s+#/.test(l));
+  if (badComment) {
+    console.error("× dist/_headers 里有缩进的注释行（会被当成响应头解析）：" + badComment.trim());
+    process.exit(1);
+  }
+  if (!/^\/\*/m.test(headers)) {
+    console.error('× dist/_headers 缺少 "/*" 路径规则块');
+    process.exit(1);
+  }
+} catch (e) {
+  console.error("× dist/_headers 校验失败：" + e.message);
   process.exit(1);
 }
 

@@ -973,7 +973,12 @@ function thumbHtml(cardOrId, v, thumbHint){
   const id = (cardOrId && typeof cardOrId === "object") ? cardOrId.id : cardOrId;
   const c = byId.get(id);
   const vv = v || "";
-  if(!c) return `<div class="t" title="未知卡牌 #${id}"><div style="display:flex;align-items:center;justify-content:center;aspect-ratio:3/4;font-size:10px;color:#889;background:#0a0e26;border-radius:5px">#${id}</div></div>`;
+  if(!c){
+    // 转义只是纵深防御：当前 id 必经服务端 sanitizeDeck 的数字校验才能进到这里，
+    // 但将来若加了「分享卡组 / 导入未校验 JSON」，这里就是存储型 XSS 的入口
+    const sid = escapeHtml(String(id));
+    return `<div class="t" title="未知卡牌 #${sid}"><div style="display:flex;align-items:center;justify-content:center;aspect-ratio:3/4;font-size:10px;color:#889;background:#0a0e26;border-radius:5px">#${sid}</div></div>`;
+  }
   const onerr = `if(!this.dataset.f){this.dataset.f=1;this.src='https://cdn.royaleapi.com/static/img/cards-150/${c.slug}.png'}else{this.style.visibility='hidden'}`;
   const costTxt = (typeof c.cost === "number" ? c.cost : "?");
   return `<div class="t ${vv}" title="${escapeHtml(c.name)}（${costTxt} 费）${vv ? " · " + VARIANTS[vv].label : ""}${thumbHint ? "\n点击清空这一格" : ""}">
@@ -1365,7 +1370,7 @@ function openDetail(deck){
     const card = byId.get(c.id);
     const v = c.v ? ` · <span style="color:var(--${c.v})">${VARIANTS[c.v].label}</span>` : "";
     return `<div class="c">${thumbHtml(c.id, effectiveVariant(deck.cards.indexOf(c), c.id, c.v))}
-      <div class="nm">${card ? escapeHtml(card.name) : "未知卡牌 #" + c.id}</div>
+      <div class="nm">${card ? escapeHtml(card.name) : "未知卡牌 #" + escapeHtml(String(c.id))}</div>
       ${card ? `<div class="cost">${typeof card.cost === "number" ? card.cost : "?"} 费${v}</div>` : ""}</div>`;
   }).join("");
   const tw = byId.get(deck.tower || DEFAULT_TOWER);
@@ -1830,7 +1835,7 @@ $("#copyBtn").addEventListener("click", () => currentDetailDeck && copyText(webL
 $("#copyDeepBtn").addEventListener("click", () => currentDetailDeck && copyText(deepLink(currentDetailDeck)));
 document.querySelectorAll("[data-close]").forEach(b => b.addEventListener("click", () => $("#" + b.dataset.close).close()));
 
-const APP_VERSION = "v8 · 2026-09-14";
+const APP_VERSION = "v8.1 · 2026-09-14";
 $("#ver").textContent = "版本 " + APP_VERSION;
 console.log("cr-copy-deck", APP_VERSION);
 

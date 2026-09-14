@@ -8,7 +8,9 @@
     "validate": "node scripts/validate.mjs",
     "build": "node scripts/build-site.mjs",
     "test:api": "node scripts/test-api.mjs",
-    "test": "node scripts/validate.mjs && node scripts/build-site.mjs && node scripts/test-api.mjs"
+    "test": "node scripts/validate.mjs && node scripts/build-site.mjs && node scripts/test-api.mjs",
+    "dev": "node scripts/dev-server.mjs",
+    "probe:prod": "node scripts/probe-prod.mjs"
   },
   "engines": {
     "node": ">=22.5"

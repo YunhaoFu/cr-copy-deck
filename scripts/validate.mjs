@@ -212,6 +212,74 @@ check(/CREATE TABLE IF NOT EXISTS/.test(sql) && (sql.match(/CREATE TABLE IF NOT 
   (sql.match(/CREATE TABLE/g) || []).length, "迁移可重复执行（全部 IF NOT EXISTS）");
 check(!/email/i.test(sql), "不收集邮箱等个人信息（只用用户名 + 密码）");
 
+/* ---------- I. 安全加固 ---------- */
+section("I. 安全加固");
+
+// I1 构建产物里的安全文件
+for (const f of ["_headers", "404.html", "robots.txt"]) {
+  check(existsSync(join(root, f)), `${f} 存在于仓库根`);
+}
+const buildSrc = readFileSync(join(root, "scripts/build-site.mjs"), "utf8");
+for (const f of ["_headers", "404.html", "robots.txt"]) {
+  check(buildSrc.includes(`"${f}"`), `构建脚本会把 ${f} 拷进 dist/`);
+}
+
+// I2 _headers 内容
+const headersSrc = readFileSync(join(root, "_headers"), "utf8");
+for (const h of ["X-Content-Type-Options: nosniff", "X-Frame-Options: DENY", "Referrer-Policy: no-referrer",
+                 "Strict-Transport-Security:", "Permissions-Policy:", "X-Robots-Tag: noindex"]) {
+  check(headersSrc.includes(h), `_headers 含 ${h.split(":")[0]}`);
+}
+for (const d of ["frame-ancestors 'none'", "base-uri 'none'", "form-action 'none'", "object-src 'none'"]) {
+  check(headersSrc.includes(d), `CSP 含「${d}」`);
+}
+// 只看真正的 CSP 响应头那一行，别被注释里的说明文字误伤
+const cspLine = (headersSrc.match(/^\s*Content-Security-Policy:(.*)$/m) || [, ""])[1];
+check(!!cspLine, "_headers 里有 Content-Security-Policy 响应头");
+check(!/default-src/.test(cspLine), "CSP 不写 default-src（本页必须内联脚本，写了就得靠 unsafe-inline）");
+check(!/unsafe-inline/.test(cspLine), "CSP 里没有 unsafe-inline");
+check(!headersSrc.split("\n").some(l => /^\s+#/.test(l)), "_headers 没有缩进的注释行（会被当成响应头名解析）");
+check(/^\/\*/m.test(headersSrc), '_headers 有 "/*" 规则块');
+
+// I3 robots.txt
+const robotsSrc = readFileSync(join(root, "robots.txt"), "utf8");
+check(/^Disallow:\s*\/\s*$/m.test(robotsSrc), "robots.txt 禁止收录");
+check(!/^Allow:/im.test(robotsSrc), "robots.txt 没有放行规则");
+
+// I4 404 页
+const notFoundSrc = readFileSync(join(root, "404.html"), "utf8");
+check(!/<script/i.test(notFoundSrc), "404 页不含脚本（纯静态，不引入反射面）");
+check(!/\bsrc\s*=/i.test(notFoundSrc), "404 页不加载外部资源");
+check(notFoundSrc.length < 8192, "404 页足够小（未匹配路径不再返回 190KB 首页）", notFoundSrc.length + " 字节");
+
+// I5 后端 fail-closed 行为（storeSrc / syncSrc 已在 H 节读过）
+check(/typeof v === "string" && DECK_ID_RE\.test\(v\)/.test(storeSrc), "validDeckId 严格判字符串（数组不能蒙混过关）");
+check(/Number\.isFinite\(ua\)[\s\S]{0,140}?: 0;/.test(storeSrc), "sanitizeDeck 非法 updatedAt 回退 0（fail-closed）");
+check(/request\.body\.getReader\(\)/.test(storeSrc), "readBody 流式读取，不是先读满再判长度");
+check(/total > MAX_BODY/.test(storeSrc), "readBody 按字节累计，超限即断");
+check(/reader\.cancel\(\)/.test(storeSrc), "readBody 超限时主动取消流");
+for (const fn of ["rateLimitPeek", "rateLimitHit", "clearBucket", "cleanupSessions", "userBucketKey"]) {
+  check(new RegExp(`export async function ${fn}\\(`).test(storeSrc), `store.js 导出 ${fn}()`);
+}
+check(/nosniff/.test(storeSrc) && /referrer-policy/.test(storeSrc), "Functions 的 JSON 响应也带 nosniff / referrer-policy");
+
+const authSrc = readFileSync(join(root, "functions/api/auth.js"), "utf8");
+check(/validUsername\(username\) \|\| !validPassword\(password\)/.test(authSrc), "登录先校验用户名与密码形状（超长名字不会建桶）");
+check(/userBucketKey\(context\.env, "login:u:"/.test(authSrc), "登录限流桶键走哈希，不存用户名明文");
+check(/await rateLimitHit\(db, bucket, LOGIN_WINDOW\)/.test(authSrc), "只有登录失败才计数");
+check(/await clearBucket\(db, bucket\)/.test(authSrc), "登录成功把失败计数清零");
+check(!/const password = String\(data\.password/.test(authSrc), "密码不再先 String(...) 再校验");
+check(/unique\|constraint/.test(authSrc), "注册只把 UNIQUE 冲突当重名，其它异常照常抛");
+check(/cleanupSessions/.test(authSrc), "登录时清理该用户的过期会话");
+
+check(/MAX_SKEW_MS\) : 0;/.test(syncSrc), "sync 的设置/主题时间戳非法回退 0");
+check(/!Number\.isFinite\(at\)\) return fail\("invalid_deck", 400\)/.test(syncSrc), "墓碑时间戳非法直接 400（不默认成 now）");
+
+// I6 前端纵深防御：卡牌 id 不能裸插进 HTML
+check(!html.includes('title="未知卡牌 #${id}"'), "卡牌缩略图不再裸插 id");
+check(html.includes("escapeHtml(String(id))"), "卡牌缩略图的 id 已转义");
+check(html.includes("escapeHtml(String(c.id))"), "卡组详情里的卡牌 id 已转义");
+
 /* ---------- 汇总 ---------- */
 console.log(`\n${failed === 0 ? "✅ 全部校验通过" : `❌ ${failed} 项未通过`}`);
 process.exit(failed === 0 ? 0 : 1);

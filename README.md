@@ -244,14 +244,45 @@ clashroyale://copyDeck?deck=27000002;26000023;...;28000015&l=Royals&tt=159000000
 - 密码用 **PBKDF2-SHA256**（默认 30000 次 + 16 字节随机盐 + 服务端 `PASSWORD_PEPPER`）派生后入库，**不存明文**；
 - 会话 Cookie 为 `HttpOnly; Secure; SameSite=Lax`，库里只存 `sha256(token + pepper)`，拖库也无法直接冒用登录态；
 - 哈希比较走定长比较，避免时间侧信道；登录失败不区分「用户不存在 / 密码错」；
-- 注册 / 登录 / 重置都有限流（按 IP 与用户名分别计数）；
-- 换密码会作废该用户全部旧会话；注销账号会删掉该用户的全部行。
+- 注册 / 登录 / 重置都有限流（按 IP 与账号分别计数）。**账号维度的桶键走 sha256，不把用户名明文写进库**；
+- **登录限流只统计失败次数**，成功登录会把该账号的失败计数清零 —— 否则队友在几台设备之间来回登录十几次就会被锁住；
+- 所有 SQL 都是 prepared statement 绑定参数；所有读写都带 `user_id` 条件，卡组主键是 `(user_id, deck_id)`，跨用户互不可见；
+- 请求体流式读取、按字节计数，超过 256 KB 立即断流（不是先读满再判长度）；
+- 时间戳和墓碑都 **fail-closed**：非法值一律当 0（永远输），而不是默认成 `now`（那会让畸形客户端覆盖别人的新数据、甚至删掉别人删不掉的东西）；
+- 换密码会作废该用户全部旧会话；注销账号会删掉该用户的全部行；登录时顺手清理过期会话。
+
+**响应头**（`_headers`，只作用于静态资源；`/api/*` 的头在 `functions/_lib/store.js` 里单独加）：
+
+| 头 | 作用 |
+|---|---|
+| `X-Content-Type-Options: nosniff` | 禁止浏览器猜 MIME |
+| `X-Frame-Options: DENY` + CSP `frame-ancestors 'none'` | 挡点击劫持 |
+| `Referrer-Policy: no-referrer` | 不把本站 URL 泄露给外部 CDN |
+| CSP `base-uri / form-action / object-src 'none'` | 挡 `<base>` 注入、表单外发、插件 |
+| `Strict-Transport-Security` | 强制 HTTPS |
+| `X-Robots-Tag: noindex` + `robots.txt` | 战队内部工具，不被搜索引擎收录（收录只会招来扫描流量） |
+
+CSP **故意不写 `default-src`**：本页是刻意的单文件内联脚本/样式，写完整 CSP 就必须带 `'unsafe-inline'`，那是自欺欺人。上面这几条指令不需要 `unsafe-inline` 就是实打实的。
+
+未匹配的路径会返回 **404 + 一张几 KB 的静态页**（`404.html`）。这不是装饰：Cloudflare Pages 在没有 `404.html` 时会把首页当作兜底返回，扫描器每探测一次就白拿 190 KB。
 
 **有意没做**（如果以后队伍变大再补）：邮箱验证、二次验证、密码强度校验、审计日志。
 
 > PBKDF2 迭代次数的上限来自 Cloudflare Workers 免费版 **单请求 10ms CPU** 的硬限制（超了直接 Error 1102，代码里 catch 不住）。
-> 默认取 30000（配合 pepper 强度足够）。升级到 Workers Paid 后可以设环境变量 `PBKDF2_ITERATIONS=210000`，
+> 默认取 30000（配合 pepper 强度足够）。`scripts/probe-prod.mjs` 会在真实部署上连打 8 次登录来验证没有撞上限
+> （实测 8/8 成功、零 5xx）。升级到 Workers Paid 后可以设环境变量 `PBKDF2_ITERATIONS=210000`，
 > 老密码会在下次登录成功时自动重哈希，用户无感。
+
+> **`pages.dev` 上拿不到 WAF / Bot Fight Mode / 速率限制规则** —— 那些是「区域（zone）」级功能，只有绑了自己的域名才有。
+> 所以**应用内的限流是唯一防线**。将来噪声变大或者想要国内访问速度，挂一个自己的域名是最直接的解法。
+
+### 备份
+
+D1 自带 Time Travel 时间点还原（保留期有限）。建议顺手定期导出一份：
+
+```bash
+npx wrangler d1 export cr-copy-deck-sync --remote --output backup-$(date +%F).sql
+```
 
 ## 部署（Cloudflare Pages）
 
@@ -291,16 +322,17 @@ npx wrangler d1 execute cr-copy-deck-sync --remote --file=migrations/0001_sync_a
 ### 本地命令
 
 ```bash
-node scripts/validate.mjs      # 110 项零依赖静态校验（单文件自包含 / 数据不变量 / 账号与同步挂点）
-node scripts/build-site.mjs    # 生成 dist/index.html + dist/_routes.json
-node scripts/test-api.mjs      # 105 项后端集成测试（用 node:sqlite 顶替 D1，把 functions/ 真跑一遍）
+node scripts/validate.mjs      # 159 项零依赖静态校验（自包含 / 数据不变量 / 账号与同步挂点 / 安全加固）
+node scripts/build-site.mjs    # 生成 dist/ 下的 5 个文件（index.html + _routes.json + _headers + 404.html + robots.txt）
+node scripts/test-api.mjs      # 133 项后端集成测试（用 node:sqlite 顶替 D1，把 functions/ 真跑一遍）
 node scripts/dev-server.mjs    # 本地开发服务器：http://localhost:8788（同时提供页面和 /api/*）
 ```
 
 本地起服务后就能在浏览器里把注册 / 登录 / 跨设备同步完整走一遍（`--db .dev.db` 可让数据落盘，
 默认内存库、重启即清空）。注意用 `http://localhost:8788` 而不是 IP —— 纯 IP 的 http 下浏览器会丢弃 Secure Cookie。
 
-还有一个浏览器端到端测试 `scripts/test-e2e.mjs`（51 项，真开 Chrome 跑「注册 → 建卡组 → 换设备登录 → 双向同步 → 删除 → 离线降级」）。
+还有一个浏览器端到端测试 `scripts/test-e2e.mjs`（线上模式 51 项，真开 Chrome 跑
+「注册 → 建卡组 → 换设备登录 → 双向同步 → 删除 → 离线降级」）。
 它依赖 `puppeteer-core`，没有放进 `package.json`，需要时自备：
 
 ```bash
@@ -311,8 +343,21 @@ npm i -D puppeteer-core@23 && CHROME_PATH=/usr/bin/google-chrome node scripts/te
 E2E_BASE=https://cr-copy-deck.pages.dev node scripts/test-e2e.mjs
 ```
 
-> 跑线上前记得先 `npx wrangler login` 没法自动清理账号时，可以手动去 D1 里删：
+> 万一自动清理失败，可以手动去 D1 里删：
 > `npx wrangler d1 execute cr-copy-deck-sync --remote --command "DELETE FROM users WHERE username_lc LIKE 'e2e-%'"`
+
+### 线上健康探测
+
+`scripts/probe-prod.mjs` 专门验证认证链路没有撞上 Workers 免费版的 CPU 上限：
+
+```bash
+node scripts/probe-prod.mjs                       # 打线上，默认连登 8 次
+node scripts/probe-prod.mjs --base http://localhost:8788/ --times 5
+```
+
+它会注册一个 `probe-xxx` 临时账号、间隔 3 秒连续登录、打印每次的状态码与耗时，跑完自动注销。
+**出现任何 5xx 就说明 PBKDF2 迭代数超了 10ms CPU 预算**（退出码 1），此时去控制台加
+`PBKDF2_ITERATIONS=15000` 再重跑即可。
 
 ### 发版流程
 
@@ -343,12 +388,14 @@ localStorage.setItem("cr_decks_v2", '<粘贴>')
 ### 上线后自检
 
 ```bash
-curl -s -o /dev/null -w '%{http_code}\n' https://cr-copy-deck.pages.dev/README.md   # 期望 404（构建配置已修）
-curl -sS -i https://cr-copy-deck.pages.dev/api/me                                   # 期望 401 {"ok":false,"error":"unauthorized"}
-curl -sS -X POST https://cr-copy-deck.pages.dev/api/auth \
-  -H 'content-type: application/json' \
-  -d '{"action":"register","username":"smoketest","password":"123456"}'             # 期望 201 + recoveryCode
-curl -sS -o /dev/null -w '%{http_code}\n' https://cr-copy-deck.pages.dev/          # 期望 200
+B=https://cr-copy-deck.pages.dev
+curl -sS -o /dev/null -w '%{http_code}\n' $B/api/me            # 期望 401 {"ok":false,"error":"unauthorized"}
+curl -sS -o /dev/null -w '%{http_code}\n' $B/                  # 期望 200
+curl -sS -o /dev/null -w '%{http_code}\n' $B/info.php          # 期望 404（不再是 200 + 190KB 首页）
+curl -sS -o /dev/null -w '%{http_code}\n' $B/zzz-not-exist     # 期望 404
+curl -sS $B/robots.txt                                          # 期望 Disallow: /
+curl -sSI $B/ | grep -iE 'content-security|x-frame|referrer|nosniff|strict-transport'
+node scripts/probe-prod.mjs                                     # 期望 8/8 成功、零 5xx
 ```
 
 真机再确认：注册 → 建卡组 → 换一台设备登录能看到 → 一端删除另一端刷新也消失 →
@@ -360,7 +407,11 @@ curl -sS -o /dev/null -w '%{http_code}\n' https://cr-copy-deck.pages.dev/       
 - `functions/api/{auth,me,sync}.js` + `functions/_lib/store.js` —— Pages Functions 后端（零依赖）
 - `migrations/0001_sync_auth.sql` —— D1 表结构（users / sessions / decks / user_settings / auth_limits）
 - `_routes.json` —— 只把 `/api/*` 交给 Functions，静态资源不触发函数
-- `scripts/` —— `validate` / `build-site` / `test-api` / `dev-server`（均零依赖）；`test-e2e` 需自备 puppeteer-core
+- `_headers` —— 静态资源的安全响应头（nosniff / 防点击劫持 / CSP 子集 / HSTS / noindex）
+- `404.html` —— 未匹配路径的 404 页（替代 Pages 默认「兜底返回首页」的行为）
+- `robots.txt` —— 禁止搜索引擎收录
+- `scripts/` —— `validate` / `build-site` / `test-api` / `dev-server` / `probe-prod`（均零依赖）；
+  `test-e2e` 需自备 puppeteer-core
 - 卡牌库：127 张（含 Minion Giant、Spirit Empress、Ronin 等新卡）
 - 卡图：Supercell 官方 CDN（`api-assets.clashroyale.com`，普通 / `cardevolutions` 觉醒 / `cardheroes` 英雄），
   失败时自动回退 RoyaleAPI CDN；精英无官方图
@@ -370,10 +421,14 @@ curl -sS -o /dev/null -w '%{http_code}\n' https://cr-copy-deck.pages.dev/       
 
 - 链接格式与官方页面接受的格式一致（HTTP 200），且与手机里复制的真实链接逐字符一致；
 - 页面渲染出的二维码可被解码，内容 == 生成的导入链接（含 `slots=`）；
-- 静态校验 110 项、后端集成测试 105 项、浏览器端到端测试 49 项，全部通过；
+- 静态校验 159 项、后端集成测试 133 项、浏览器端到端测试 51 项（线上），全部通过；
 - 端到端覆盖：注册 → 建卡组 → 换设备登录看到同一份 → 改名（云端仍是同一套，不会变两套）→
   主题 / 设置跨设备生效 → 一端删除另一端刷新也消失且不被旧数据复活 → 首次登录弹合并窗 →
   退出后重新登录 → 恢复码重置密码（旧密码失效）→ `file://` 下判离线、不访问后端、功能照常；
+- 安全侧覆盖：超长用户名不建限流桶、限流桶键不含用户名明文、chunked 超大 body 被断流、
+  缺时间戳的推送不会覆盖新版本、数组形式的卡组 id 被拒、墓碑缺时间戳直接 400、
+  成功登录不被限流且清零失败计数、反复失败仍会被拦、登录时清理过期会话、
+  D1 故障不会被伪装成「用户名已注册」、非字符串密码被拒；
 - 兼容性：未绑定 D1 时 `/api/*` 返回 503，前端自动离线降级，页面功能不受影响。
 
 ## 注意

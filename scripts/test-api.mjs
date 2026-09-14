@@ -390,11 +390,12 @@ section("L 限流");
   }
   check("L2 超过 10 次注册后被限流", blocked);
 
-  // 登录限流：同用户名 15 分钟 10 次
+  // 登录限流：同一账号 10 分钟内失败 20 次后拦下（换 IP 也拦得住）
+  // 阈值和窗口都在 auth.js 的 LOGIN_MAX_FAILS / LOGIN_WINDOW 里，改那边记得改这里
   const db3 = makeDb();
   await auth(db3, { body: { action: "register", username: "victim", password: "123456" }, env: { __ip: "8.8.8.1" } });
   let loginBlocked = false;
-  for (let i = 0; i < 14; i++) {
+  for (let i = 0; i < 25; i++) {
     const r = await auth(db3, { body: { action: "login", username: "victim", password: "bruteforce" }, env: { __ip: `7.7.${i}.1` } });
     if (r.status === 429) { loginBlocked = true; break; }
   }
@@ -445,8 +446,149 @@ section("O me 接口的卡组计数");
   check("O3 墓碑不计入 rev 之外的计数", r2.json?.decks?.length === 1);
 }
 
-/* ---------------- 结果 ---------------- */
+section("P 安全加固：fail-closed 与限流");
+{
+  /* P1 超长用户名不给建桶 —— 否则未认证就能往 auth_limits 里灌数据 */
+  const dbA = makeDb();
+  const huge = "x".repeat(3000);
+  const r1 = await auth(dbA, { body: { action: "login", username: huge, password: "123456" }, env: { __ip: "1.2.3.1" } });
+  check("P1 3000 字符用户名 → 401", r1.status === 401, `got ${r1.status}`);
+  const rowsA = await dbA.prepare("SELECT COUNT(*) AS n FROM auth_limits WHERE bucket LIKE 'login:u:%'").first();
+  check("P2 没有为超长用户名建账号维度限流桶", Number(rowsA.n) === 0, `n=${rowsA.n}`);
+  const longRows = await dbA.prepare("SELECT COUNT(*) AS n FROM auth_limits WHERE length(bucket) > 64").first();
+  check("P3 限流表里没有超长 bucket", Number(longRows.n) === 0, `n=${longRows.n}`);
 
+  /* P4 桶键不含用户名明文 */
+  const dbB = makeDb();
+  await auth(dbB, { body: { action: "register", username: "阿福", password: "123456" }, env: { __ip: "1.2.3.2" } });
+  for (let i = 0; i < 3; i++) {
+    await auth(dbB, { body: { action: "login", username: "阿福", password: "wrongpass" }, env: { __ip: `1.2.3.${10 + i}` } });
+  }
+  const leak = await dbB.prepare("SELECT COUNT(*) AS n FROM auth_limits WHERE bucket LIKE '%阿福%'").first();
+  check("P4 auth_limits 里不存用户名明文", Number(leak.n) === 0, `n=${leak.n}`);
+  const ub = await dbB.prepare("SELECT COUNT(*) AS n FROM auth_limits WHERE bucket LIKE 'login:u:%'").first();
+  check("P5 失败登录确实记了账号维度的桶", Number(ub.n) === 1, `n=${ub.n}`);
+
+  /* P6 超大 body：模拟 chunked（不带 content-length），走流式累计 */
+  const dbC = makeDb();
+  const bigCtx = ctx(dbC, { method: "POST", url: `${B}/api/auth`, body: "x".repeat(1024 * 1024), env: { __ip: "1.2.3.20" } });
+  check("P6 测试请求确实没有 content-length（走流式路径）",
+    !bigCtx.request.headers.get("content-length"), "有 content-length 的话测的是另一条分支");
+  const bigRes = await call(authMod, bigCtx, "POST");
+  check("P7 1MB body → 413 too_large", bigRes.status === 413 && bigRes.json?.error === "too_large",
+    `got ${bigRes.status} ${JSON.stringify(bigRes.json)}`);
+
+  /* P8 卡组缺 updatedAt 不能覆盖已有更新的版本（旧行为会回退成 now） */
+  const dbD = makeDb();
+  const regD = await auth(dbD, { body: { action: "register", username: "tscheck", password: "123456" }, env: { __ip: "1.2.3.30" } });
+  const jarD = cookieFrom(regD.res);
+  await syncPut(dbD, { cookie: jarD, body: { decks: [{ ...deckA, name: "较新版本", updatedAt: Date.now() }], deleted: [] } });
+  const noTs = await syncPut(dbD, { cookie: jarD, body: { decks: [{ ...deckA, name: "没有时间戳的旧客户端" }], deleted: [] } });
+  check("P8 缺 updatedAt 的推送被当作 0（永远输）", noTs.json?.applied?.decks === 0, JSON.stringify(noTs.json?.applied));
+  check("P9 服务端内容未被改名", noTs.json?.decks?.find(d => d.id === deckA.id)?.name === "较新版本",
+    noTs.json?.decks?.find(d => d.id === deckA.id)?.name);
+  check("P10 缺 updatedAt 时仍能新建卡组（服务端无记录 -> 基准 -1）",
+    (await syncPut(dbD, { cookie: jarD, body: { decks: [{ ...deckB }], deleted: [] } })).json?.applied?.decks === 1);
+
+  /* P11 id 传数组必须直接 400（旧的 String(v) 校验会放过） */
+  const arrId = await syncPut(dbD, { cookie: jarD, body: { decks: [{ ...deckA, id: ["abcdefgh"] }], deleted: [] } });
+  check("P11 数组形式的卡组 id → 400", arrId.status === 400 && arrId.json?.error === "invalid_deck",
+    `got ${arrId.status} ${JSON.stringify(arrId.json)}`);
+
+  /* P12 墓碑时间戳非法必须 400，不能默认成 now（否则畸形客户端能删数据） */
+  const badTomb = await syncPut(dbD, { cookie: jarD, body: { decks: [], deleted: [{ id: deckA.id }] } });
+  check("P12 墓碑缺时间戳 → 400（不默认成 now）", badTomb.status === 400 && badTomb.json?.error === "invalid_deck",
+    `got ${badTomb.status}`);
+  const stillThere = await syncGet(dbD, { cookie: jarD });
+  check("P13 被拒的墓碑没有删掉任何卡组", stillThere.json?.decks?.length === 2, `decks=${stillThere.json?.decks?.length}`);
+
+  /* P14 成功登录不计入失败限流 */
+  const dbE = makeDb();
+  await auth(dbE, { body: { action: "register", username: "frequent", password: "123456" }, env: { __ip: "1.2.3.40" } });
+  let allOk = true;
+  for (let i = 0; i < 8; i++) {
+    const r = await auth(dbE, { body: { action: "login", username: "frequent", password: "123456" }, env: { __ip: `1.2.4.${i}` } });
+    if (r.status !== 200) allOk = false;
+  }
+  check("P14 连续 8 次成功登录不会被限流（只在失败时计数）", allOk);
+  const cleared = await dbE.prepare("SELECT COUNT(*) AS n FROM auth_limits WHERE bucket LIKE 'login:u:%'").first();
+  check("P15 成功登录后账号维度计数被清零", Number(cleared.n) === 0, `n=${cleared.n}`);
+
+  /* P16 失败限流仍然生效：20 次失败内正常，第 21 次 429 */
+  const dbF = makeDb();
+  await auth(dbF, { body: { action: "register", username: "brute", password: "123456" }, env: { __ip: "1.2.5.1" } });
+  let firstBlockedAt = 0;
+  for (let i = 1; i <= 25; i++) {
+    const r = await auth(dbF, { body: { action: "login", username: "brute", password: "nope-nope" }, env: { __ip: `1.2.6.${i}` } });
+    if (r.status === 429) { firstBlockedAt = i; break; }
+  }
+  check("P16 反复输错密码最终会被限流", firstBlockedAt > 0, `从第 ${firstBlockedAt} 次开始`);
+  check("P17 限流阈值是 20 次失败（不是 10 次误伤正常用户）", firstBlockedAt === 21, `实际第 ${firstBlockedAt} 次`);
+
+  /* P18 登录成功会清掉该用户的过期会话 */
+  const dbG = makeDb();
+  const regG = await auth(dbG, { body: { action: "register", username: "sessgc", password: "123456" }, env: { __ip: "1.2.7.1" } });
+  await dbG.prepare("UPDATE sessions SET expires_at = ?").bind(Date.now() - 1000).run();
+  const loginG = await auth(dbG, { body: { action: "login", username: "sessgc", password: "123456" }, env: { __ip: "1.2.7.2" } });
+  check("P18 登录成功 → 200", loginG.status === 200, `got ${loginG.status}`);
+  const left = await dbG.prepare("SELECT COUNT(*) AS n FROM sessions").first();
+  check("P19 过期会话被顺手清理（只剩本次新建的）", Number(left.n) === 1, `sessions=${left.n}`);
+  check("P20 注册时发的旧会话确实失效", (await me(dbG, { cookie: cookieFrom(regG.res) })).status === 401);
+}
+
+section("Q 数据库故障不会被伪装成业务错误");
+{
+  const dbH = makeDb();
+  // 让 users 表的 INSERT 抛出非 UNIQUE 异常（模拟 D1 故障）
+  const flaky = new Proxy(dbH, {
+    get(target, prop) {
+      if (prop !== "prepare") {
+        const v = Reflect.get(target, prop);
+        return typeof v === "function" ? v.bind(target) : v;
+      }
+      return sql => {
+        if (/INSERT INTO users/i.test(sql)) {
+          return { bind: () => ({ run: async () => { throw new Error("D1_ERROR: disk I/O error"); } }) };
+        }
+        return target.prepare(sql);
+      };
+    },
+  });
+  let threw = false;
+  try {
+    await auth(flaky, { body: { action: "register", username: "dbdown", password: "123456" }, env: { __ip: "1.2.8.1" } });
+  } catch {
+    threw = true;
+  }
+  check("Q1 D1 故障时向上抛（而不是伪装成「用户名已注册」）", threw);
+
+  // 唯一索引冲突仍然要返回 409
+  const dup = await auth(dbH, { body: { action: "register", username: "dupuser", password: "123456" }, env: { __ip: "1.2.8.2" } });
+  const dup2 = await auth(dbH, { body: { action: "register", username: "dupuser", password: "123456" }, env: { __ip: "1.2.8.3" } });
+  check("Q2 先注册成功", dup.status === 201, `got ${dup.status}`);
+  check("Q3 真重名仍然返回 409", dup2.status === 409 && dup2.json?.error === "username_taken", `got ${dup2.status}`);
+}
+
+section("R 密码必须是字符串");
+{
+  const dbI = makeDb();
+  const r1 = await auth(dbI, { body: { action: "register", username: "objpass", password: { evil: 1 } }, env: { __ip: "1.2.9.1" } });
+  check("R1 password 传对象 → 400 weak_password", r1.status === 400 && r1.json?.error === "weak_password",
+    `got ${r1.status} ${JSON.stringify(r1.json)}`);
+  const r2 = await auth(dbI, { body: { action: "register", username: "arrpass", password: ["123456"] }, env: { __ip: "1.2.9.2" } });
+  check("R2 password 传数组 → 400", r2.status === 400 && r2.json?.error === "weak_password", `got ${r2.status}`);
+}
+
+section("S Functions 响应头");
+{
+  const dbJ = makeDb();
+  const r = await me(dbJ, { cookie: "" });
+  check("S1 JSON 响应带 x-content-type-options: nosniff", r.res.headers.get("x-content-type-options") === "nosniff");
+  check("S2 JSON 响应带 referrer-policy", r.res.headers.get("referrer-policy") === "no-referrer");
+  check("S3 JSON 响应禁缓存", r.res.headers.get("cache-control") === "no-store");
+}
+
+/* ---------------- 结果 ---------------- */
 console.log("\n" + "=".repeat(56));
 if (failures.length) {
   console.log(`✗ ${failures.length} 项失败 / 共 ${passed + failures.length} 项`);

@@ -1,0 +1,17 @@
+# Cloudflare Pages 响应头（构建时拷进 dist/，由 Pages 自动应用到静态资源）
+# 注意：这些头不会应用到 Pages Functions 的响应上（/api/* 的头在 functions/_lib/store.js 里单独加）
+#
+# CSP 只写不需要 'unsafe-inline' 的那几条指令 —— 本应用刻意是单文件内联脚本/样式，
+# 写完整 CSP 就必须带 'unsafe-inline'，那是自欺欺人。下面这几条是实打实的：
+#   frame-ancestors 挡点击劫持；base-uri 挡 <base> 注入型劫持；
+#   form-action 挡表单外发；object-src 挡插件。
+# X-Robots-Tag 是因为这是战队内部工具，不该被搜索引擎收录（收录只会招来更多扫描流量）。
+
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer
+  Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), usb=()
+  Strict-Transport-Security: max-age=31536000
+  Content-Security-Policy: frame-ancestors 'none'; base-uri 'none'; form-action 'none'; object-src 'none'
+  X-Robots-Tag: noindex, nofollow

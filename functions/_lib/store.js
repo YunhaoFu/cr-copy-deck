@@ -26,6 +26,9 @@ export function json(data, status = 200, extra = {}) {
     headers: {
       "content-type": "application/json; charset=utf-8",
       "cache-control": "no-store",
+      // _headers 文件里的安全头不会应用到 Functions 的响应上，所以在这里单独加
+      "x-content-type-options": "nosniff",
+      "referrer-policy": "no-referrer",
       ...extra,
     },
   });
@@ -184,7 +187,9 @@ export function validPassword(v) {
 }
 
 export function validDeckId(v) {
-  return DECK_ID_RE.test(String(v || ""));
+  // 必须严格是字符串：用 String(v) 的话 ["abcdefgh"] 这种数组也能通过校验，
+  // 而调用方拿到的还是数组，绑给 D1 要么报错、要么写入值和校验值不一致
+  return typeof v === "string" && DECK_ID_RE.test(v);
 }
 
 /** 校验一套卡组：8 张卡、id 为非负整数、形态合法。返回规范化后的对象或 null。 */
@@ -206,10 +211,13 @@ export function sanitizeDeck(raw) {
   }
   const ua = Number(raw.updatedAt);
   const now = Date.now();
-  // 夹到 [0, now + 5min]：防止客户端时钟跑偏导致某一端永远赢
-  const updatedAt = Number.isFinite(ua) ? Math.min(Math.max(Math.round(ua), 0), now + 5 * 60 * 1000) : now;
+  // 合法时间戳夹到 [0, now + 5min]（防止客户端时钟跑偏导致某一端永远赢）；
+  // 缺失或非法的一律当 0 —— 也就是「永远输」。
+  // 之前这里回退成 now，等于把畸形客户端当成"此刻的修改"，能顶掉别的设备的新版本甚至删除墓碑。
+  // 新建卡组不受影响：服务端没有记录时基准是 -1，0 > -1 仍会写入。
+  const updatedAt = Number.isFinite(ua) ? Math.min(Math.max(Math.round(ua), 0), now + 5 * 60 * 1000) : 0;
   const si = Number(raw.sort);
-  return { id: raw.id, name, cards, tower, updatedAt, sort: Number.isInteger(si) && si >= 0 ? si : 0 };
+  return { id: String(raw.id), name, cards, tower, updatedAt, sort: Number.isInteger(si) && si >= 0 ? si : 0 };
 }
 
 export function validTheme(v) {
@@ -218,19 +226,42 @@ export function validTheme(v) {
 
 /* ---------------- 请求解析 ---------------- */
 
+/**
+ * 读请求体：流式累计，超过 MAX_BODY 立刻断开。
+ * 不能写成 `await request.text()` 再判长度 —— 那时候整个 body 已经缓冲进 isolate 了，
+ * 只要用 `Transfer-Encoding: chunked`（不带 content-length）就能绕过早退那一行。
+ * 长度也统一按字节数算，不是 UTF-16 字符数。
+ */
 export async function readBody(request) {
   const declared = Number(request.headers.get("content-length") || 0);
   if (declared && declared > MAX_BODY) return { error: "too_large" };
-  let text;
+  if (!request.body) return { data: {} };
+
+  const reader = request.body.getReader();
+  const chunks = [];
+  let total = 0;
   try {
-    text = await request.text();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > MAX_BODY) {
+        await reader.cancel().catch(() => {});
+        return { error: "too_large" };
+      }
+      chunks.push(value);
+    }
   } catch {
     return { error: "bad_body" };
   }
-  if (!text) return { data: {} };
-  if (text.length > MAX_BODY) return { error: "too_large" };
+  if (!total) return { data: {} };
+
+  const buf = new Uint8Array(total);
+  let off = 0;
+  for (const c of chunks) { buf.set(c, off); off += c.byteLength; }
+
   try {
-    const v = JSON.parse(text);
+    const v = JSON.parse(new TextDecoder().decode(buf));
     if (!v || typeof v !== "object" || Array.isArray(v)) return { error: "bad_body" };
     return { data: v };
   } catch {
@@ -341,4 +372,45 @@ export async function rateLimit(db, bucket, limit, windowMs) {
 export async function cleanupLimits(db) {
   // 顺手清掉 1 天前的限流记录，避免表无限增长
   await db.prepare("DELETE FROM auth_limits WHERE window_at < ?").bind(Date.now() - 24 * 3600 * 1000).run();
+}
+
+/**
+ * 只看当前窗口的计数，不增加。
+ * 用在「成功不该计数」的场景：比如登录限流只应该统计密码错误的次数，
+ * 否则队友在几台设备之间来回登录 10 次就会被锁 15 分钟。
+ */
+export async function rateLimitPeek(db, bucket, limit, windowMs) {
+  const now = Date.now();
+  const row = await db.prepare("SELECT count, window_at FROM auth_limits WHERE bucket = ?").bind(bucket).first();
+  if (!row || now - Number(row.window_at) > windowMs) return { ok: true };
+  if (Number(row.count) >= limit) {
+    return { ok: false, retryAfterMs: windowMs - (now - Number(row.window_at)) };
+  }
+  return { ok: true };
+}
+
+/** 记一次失败。窗口过期就重置为 1，否则 +1。 */
+export async function rateLimitHit(db, bucket, windowMs) {
+  const now = Date.now();
+  await db.prepare(
+    "INSERT INTO auth_limits (bucket, count, window_at) VALUES (?, 1, ?) " +
+    "ON CONFLICT(bucket) DO UPDATE SET " +
+    "count = CASE WHEN ? - window_at > ? THEN 1 ELSE count + 1 END, " +
+    "window_at = CASE WHEN ? - window_at > ? THEN ? ELSE window_at END"
+  ).bind(bucket, now, now, windowMs, now, windowMs, now).run();
+}
+
+/** 清掉一个限流桶（登录成功后把该账号的失败计数归零） */
+export async function clearBucket(db, bucket) {
+  await db.prepare("DELETE FROM auth_limits WHERE bucket = ?").bind(bucket).run();
+}
+
+/** 清掉某个用户已经过期的会话（过期会话否则只会在该 token 被再次提交时才删掉） */
+export async function cleanupSessions(db, userId) {
+  await db.prepare("DELETE FROM sessions WHERE user_id = ? AND expires_at <= ?").bind(userId, Date.now()).run();
+}
+
+/** 把用户名映射成定长的桶键：不把用户名明文写进 auth_limits，也挡掉超长用户名撑大表 */
+export async function userBucketKey(env, prefix, usernameLower) {
+  return prefix + (await sha256hex(usernameLower)).slice(0, 32);
 }

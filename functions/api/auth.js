@@ -9,7 +9,8 @@ import {
   validPassword, hashPassword, verifyPassword, passwordNeedsRehash,
   randomId, randomRecoveryCode, normRecoveryCode, sha256hex, ctEqual,
   createSession, sessionCookie, clearSessionCookie,
-  parseCookies, tokenHashOf, rateLimit, cleanupLimits, SESSION_COOKIE,
+  parseCookies, tokenHashOf, rateLimit, rateLimitPeek, rateLimitHit, clearBucket,
+  cleanupLimits, cleanupSessions, userBucketKey, SESSION_COOKIE,
 } from "../_lib/store.js";
 
 const HOUR = 3600 * 1000;
@@ -36,7 +37,9 @@ export async function onRequestPost(context) {
 async function register(context, db, data) {
   const username = normUsername(data.username);
   if (!validUsername(username)) return fail("invalid_username", 400);
-  const password = String(data.password || "");
+  // 传原始值给 validPassword：先 String(...) 会把它里面的 typeof 检查变成死代码，
+  // 于是 password: {} 这种能用 "[object Object]" 注册成功
+  const password = data.password;
   if (!validPassword(password)) return fail("weak_password", 400);
 
   const ip = clientIp(context);
@@ -60,8 +63,9 @@ async function register(context, db, data) {
       "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)"
     ).bind(userId, username, lc, pw.scheme, pw.iter, pw.salt, pw.hash, rcHash, now, now).run();
   } catch (e) {
-    // 并发抢注同一个名字 → 唯一索引兜底
-    return fail("username_taken", 409);
+    // 只有唯一索引冲突才算重名；D1 故障不能被伪装成「这个用户名已注册」
+    if (/unique|constraint/i.test(String(e && e.message))) return fail("username_taken", 409);
+    throw e;
   }
 
   const token = await createSession(context.env, db, userId);
@@ -75,22 +79,42 @@ async function register(context, db, data) {
 
 /* ---------------- 登录 ---------------- */
 
+const LOGIN_WINDOW = 10 * 60 * 1000;   // 失败计数的滑动窗口
+const LOGIN_MAX_FAILS = 20;            // 窗口内允许的失败次数
+const LOGIN_IP_MAX = 30;               // 同一 IP 在 15 分钟内的总尝试次数
+const LOGIN_IP_WINDOW = 15 * 60 * 1000;
+
 async function login(context, db, data) {
   const username = normUsername(data.username);
-  const password = String(data.password || "");
-  if (!username || !password) return fail("bad_credentials", 401);
-
-  const ipKey = await sha256hex(clientIp(context));
+  const password = data.password;
+  // 用户名先用注册时的同一套规则挡一道：既避免拿超长字符串去算哈希 / 建桶，
+  // 也保证这里不会因为畸形输入走到下面去跑 PBKDF2。
+  if (!validUsername(username) || !validPassword(password)) return fail("bad_credentials", 401);
   const lc = username.toLowerCase();
-  const byIp = await rateLimit(db, `login:${ipKey}`, 30, 15 * 60 * 1000);
+
+  // IP 维度：统计所有尝试，兜住撞库
+  const ipKey = await sha256hex(clientIp(context));
+  const byIp = await rateLimit(db, `login:ip:${ipKey}`, LOGIN_IP_MAX, LOGIN_IP_WINDOW);
   if (!byIp.ok) return fail("rate_limited", 429);
-  const byUser = await rateLimit(db, `login:u:${lc}`, 10, 15 * 60 * 1000);
-  if (!byUser.ok) return fail("rate_limited", 429);
+
+  // 账号维度：桶键用哈希，不把用户名明文写进 auth_limits（也免得超长名字撑大表）；
+  // 而且只统计失败次数 —— 成功登录不计，否则队友在几台设备间来回登录就会被锁
+  const bucket = await userBucketKey(context.env, "login:u:", lc);
+  const peek = await rateLimitPeek(db, bucket, LOGIN_MAX_FAILS, LOGIN_WINDOW);
+  if (!peek.ok) return fail("rate_limited", 429);
 
   const user = await db.prepare("SELECT * FROM users WHERE username_lc = ?").bind(lc).first();
-  if (!user) return fail("bad_credentials", 401);
+  if (!user) {
+    await rateLimitHit(db, bucket, LOGIN_WINDOW);
+    return fail("bad_credentials", 401);
+  }
   const ok = await verifyPassword(context.env, password, user);
-  if (!ok) return fail("bad_credentials", 401);
+  if (!ok) {
+    await rateLimitHit(db, bucket, LOGIN_WINDOW);
+    return fail("bad_credentials", 401);
+  }
+
+  await clearBucket(db, bucket);   // 登录成功 → 该账号的失败计数归零
 
   // 迭代次数或 pepper 配置变了就顺手升级，用户无感
   if (passwordNeedsRehash(context.env, user)) {
@@ -100,6 +124,9 @@ async function login(context, db, data) {
         .bind(pw.scheme, pw.iter, pw.salt, pw.hash, Date.now(), user.id).run();
     } catch { /* 升级失败不影响本次登录 */ }
   }
+
+  // 过期会话平时没人清（只在被再次提交时才删），顺手收一次
+  await cleanupSessions(db, user.id).catch(() => {});
 
   const token = await createSession(context.env, db, user.id);
   return json(
@@ -125,15 +152,16 @@ async function logout(context, db) {
 async function reset(context, db, data) {
   const username = normUsername(data.username);
   const code = normRecoveryCode(data.recoveryCode);
-  const password = String(data.password || "");
-  if (!username || !code) return fail("bad_recovery", 400);
+  const password = data.password;              // 传原始值给 validPassword（见 register 的说明）
+  if (!validUsername(username) || !code) return fail("bad_recovery", 400);
   if (!validPassword(password)) return fail("weak_password", 400);
 
   const ipKey = await sha256hex(clientIp(context));
   const lc = username.toLowerCase();
-  const byIp = await rateLimit(db, `reset:${ipKey}`, 10, HOUR);
+  const byIp = await rateLimit(db, `reset:ip:${ipKey}`, 10, HOUR);
   if (!byIp.ok) return fail("rate_limited", 429);
-  const byUser = await rateLimit(db, `reset:u:${lc}`, 5, HOUR);
+  // 同 login：桶键用哈希，避免把用户名明文写进 auth_limits
+  const byUser = await rateLimit(db, await userBucketKey(context.env, "reset:u:", lc), 5, HOUR);
   if (!byUser.ok) return fail("rate_limited", 429);
 
   const user = await db.prepare("SELECT id, rc_hash FROM users WHERE username_lc = ?").bind(lc).first();
