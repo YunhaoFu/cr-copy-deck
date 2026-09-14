@@ -170,6 +170,9 @@ try {
   await A.page.evaluate(() => { activeTab = "hot1v1"; render(); });
   await sleep(400);
   check("1.4 HOT 页正常渲染出卡组卡片", await A.page.evaluate(() => document.querySelectorAll("#decks .deck").length) > 0);
+  const hotBtns = await A.page.evaluate(() =>
+    [...new Set([...document.querySelectorAll("#decks .deck .opbtn")].map(b => b.textContent.trim()))]);
+  check("1.5 HOT 卡组只有「复制」按钮", hotBtns.join(",") === "复制", JSON.stringify(hotBtns));
 
   section("2 注册");
   await A.page.click("#acctBtn");
@@ -196,9 +199,18 @@ try {
   for (const id of picks) {
     await A.page.click(`#eGrid .c[data-id="${id}"]`);
   }
+  // 亮色主题下三个形态的星标必须能区分开（曾经被一条高权重的亮色覆盖全压成同一种深蓝）
+  const starColors = await A.page.evaluate(() =>
+    [...new Set([...document.querySelectorAll("#eSel .star")].map(el => getComputedStyle(el).color))]);
+  check("3.0 亮色主题下星标颜色可区分（≥3 种）", starColors.length >= 3, JSON.stringify(starColors));
+
   await A.page.click("#eSave");
   await A.page.waitForFunction(() => !document.querySelector("#editor").open, { timeout: 5000 });
   await sleep(300);
+  const myBtns = await A.page.evaluate(() =>
+    [...document.querySelectorAll("#decks .deck .opbtn")].map(b => b.textContent.trim()));
+  check("3.5 自己的卡组按钮 = 查看 / 编辑 / 删除（不再有复制）",
+    myBtns.join(",") === "查看,编辑,删除", JSON.stringify(myBtns));
   const local = await A.page.evaluate(() => decks.map(d => ({ id: d.id, name: d.name, n: d.cards.length })));
   check("3.1 本地已新增 1 套卡组", local.length === 1 && local[0].n === 8, JSON.stringify(local));
   deckId = local[0] && local[0].id;

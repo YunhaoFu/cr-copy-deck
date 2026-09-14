@@ -145,6 +145,13 @@ export async function onRequestPut(context) {
   const finalStmts = [
     db.prepare("DELETE FROM decks WHERE user_id = ? AND deleted_at IS NOT NULL AND deleted_at < ?")
       .bind(uid, now - TOMBSTONE_TTL_MS),
+    // 兜底：本次请求开头读到会话之后、写到库里之前，账号有可能刚好被注销
+    // （DELETE /api/me）。那样就会留下谁也读不到的孤儿行。
+    // 在同一个 batch 里自查一次，保证「账号没了 = 数据也没了」。
+    db.prepare("DELETE FROM decks WHERE user_id = ? AND NOT EXISTS (SELECT 1 FROM users WHERE id = ?)")
+      .bind(uid, uid),
+    db.prepare("DELETE FROM user_settings WHERE user_id = ? AND NOT EXISTS (SELECT 1 FROM users WHERE id = ?)")
+      .bind(uid, uid),
   ];
   if (changed) {
     finalStmts.push(db.prepare("UPDATE users SET data_rev = data_rev + 1, updated_at = ? WHERE id = ?").bind(now, uid));

@@ -340,9 +340,16 @@ footer{margin-top:40px;border-top:1px solid var(--line-2);padding-top:16px;font-
 :root[data-theme="light"] .chip,
 :root[data-theme="light"] .opbtn,
 :root[data-theme="light"] .ghostbtn,
-:root[data-theme="light"] .star,
 :root[data-theme="light"] .mv,
 :root[data-theme="light"] .themebtn{background:#fff;color:#33406b}
+/* 星标不能跟着上面那组一起被涂成同一个深蓝 —— 那组选择器权重比 .star.purple 高，
+   会把紫/橙/银全压成同一种颜色，在亮色主题下就完全看不出形态了。
+   所以这里只给星标设背景，颜色按形态单独定，并且换成在白底上有对比度的色值。 */
+:root[data-theme="light"] .star{background:#fff}
+:root[data-theme="light"] .star.silver{color:#7f8cb0}
+:root[data-theme="light"] .star.purple{color:#7c3aed}
+:root[data-theme="light"] .star.orange{color:#b35f00}
+:root[data-theme="light"] .star.on{background:rgba(15,22,51,.07)}
 :root[data-theme="light"] .chip:hover,
 :root[data-theme="light"] .opbtn:hover{border-color:var(--gold);color:#0f1633}
 :root[data-theme="light"] .picker{background:linear-gradient(180deg,#f7faff,#eef3fe)}
@@ -381,9 +388,20 @@ footer{margin-top:40px;border-top:1px solid var(--line-2);padding-top:16px;font-
   header h1{font-size:22px}
   .decks{grid-template-columns:1fr}
   .deck .title{padding-right:0}
-  .selwrap{flex-direction:column}
-  .towerslot{width:100%}
+  .selwrap{flex-direction:column;align-items:stretch;gap:10px}
+  /* 4 列等分：原来写死 4×84px，窄屏上总宽超过对话框，第 4 格会被右边裁掉 */
+  .selrow{grid-template-columns:repeat(4,1fr);gap:6px}
+  .selrow .s{padding:3px}
+  .selrow .s .mv{min-width:0}
+  /* 塔防槽改成横排「标签 | 卡图 | 下拉」，否则 .towerslot 占满宽度后
+     里面 width:100% 的卡图会被放大到铺满整屏 */
+  .towerslot{width:100%;display:flex;align-items:center;gap:10px}
+  .towerslot .tslabel{margin:0;flex:0 0 auto;white-space:nowrap}
+  .towerslot .t{flex:0 0 auto;width:68px}
+  .towerslot select{margin-top:0;flex:1 1 auto;width:auto;min-width:0}
   .f3,.f2{grid-template-columns:1fr}
+  /* 窄屏下 8 格选卡每格小，星标跟着缩一点，免得换行 */
+  .star{font-size:12px;padding:0 4px}
 }
 </style>
 <script>
@@ -1294,9 +1312,11 @@ function deckCardHtml(deck, i, user){
     </div>
     ${warns.length ? `<div class="warnline">⛔ ${escapeHtml(warns[0])}</div>` : ""}
     <div class="ops">
-      <button class="opbtn copy" title="复制到「我的卡组」">复制</button>
-      ${user ? `<button class="opbtn edit" title="载入编辑器">编辑</button>
-      <button class="opbtn del">删除</button>` : ""}
+      ${user
+        ? `<button class="opbtn view" title="查看卡组详情 / 导入链接">查看</button>
+      <button class="opbtn edit" title="载入编辑器">编辑</button>
+      <button class="opbtn del">删除</button>`
+        : `<button class="opbtn copy" title="复制到「我的卡组」">复制</button>`}
     </div>
   </div>`;
 }
@@ -1312,9 +1332,11 @@ decksEl.addEventListener("click", e => {
   const btn = e.target.closest(".opbtn");
   if(btn){
     e.stopPropagation();
+    if(btn.classList.contains("view")){ openDetail(deck); return; }
     if(btn.classList.contains("copy")){
+      // 只有内置的 HOT 卡组会走到这里（自己的卡组是「查看 / 编辑 / 删除」）
       if(metaName) openCopyChooser(deck);      // HOT 卡组：先问复制到哪里
-      else copyDeckInto(deck, false);          // 自己的卡组：直接再复制一份
+      else copyDeckInto(deck, false);          // 兜底：万一还有入口能点到
       return;
     }
     if(btn.classList.contains("del")){

@@ -280,6 +280,41 @@ check(!html.includes('title="未知卡牌 #${id}"'), "卡牌缩略图不再裸�
 check(html.includes("escapeHtml(String(id))"), "卡牌缩略图的 id 已转义");
 check(html.includes("escapeHtml(String(c.id))"), "卡组详情里的卡牌 id 已转义");
 
+/* ---------- J. UI 细节（亮色可读性 / 移动端 / 按钮语义） ---------- */
+section("J. UI 细节");
+
+// J1 亮色主题下星标必须保留形态颜色。
+// 曾经的 bug：.star 被并进「统一 background:#fff;color:#33406b」那组选择器里，
+// 而 :root[data-theme="light"] .star 的权重高于 .star.purple，于是紫/橙/银全被压成同一种深蓝。
+check(!/:root\[data-theme="light"\] \.star,/.test(html), "星标没有被并进「统一配色」那组选择器");
+for (const [cls, label] of [["silver", "普通"], ["purple", "觉醒"], ["orange", "精英"]]) {
+  const m = html.match(new RegExp(`:root\\[data-theme="light"\\] \\.star\\.${cls}\\{color:([^}]+)\\}`));
+  check(!!m, `亮色主题下 .star.${cls}（${label}）有独立颜色定义`, m ? m[1] : "未定义");
+}
+const lightStarColors = ["silver", "purple", "orange"].map(c => {
+  const m = html.match(new RegExp(`:root\\[data-theme="light"\\] \\.star\\.${c}\\{color:([^}]+)\\}`));
+  return m ? m[1].trim() : "";
+});
+check(new Set(lightStarColors).size === 3, "亮色主题下三种形态的星标颜色互不相同", lightStarColors.join(" / "));
+
+// J2 窄屏布局
+const mobileIdx = html.indexOf("@media (max-width:620px)");
+const mobileCss = mobileIdx < 0 ? "" : html.slice(mobileIdx, html.indexOf("</style>", mobileIdx));
+check(!!mobileCss, "存在窄屏媒体查询");
+check(/\.selrow\{grid-template-columns:repeat\(4,1fr\)/.test(mobileCss),
+  "窄屏下 8 格选卡按等分列（原来写死 4×84px，第四格会被裁掉）");
+check(/\.towerslot\{width:100%;display:flex/.test(mobileCss),
+  "窄屏下塔防槽改横排（否则里面的卡图被撑到铺满整屏）");
+check(/\.towerslot \.t\{[^}]*width:68px/.test(mobileCss), "窄屏下塔防卡图有固定宽度");
+
+// J3 卡组卡片按钮语义
+const dchIdx = html.indexOf("function deckCardHtml");
+const dch = dchIdx < 0 ? "" : html.slice(dchIdx, dchIdx + 1600);
+check(/\? `<button class="opbtn view"/.test(dch), "自己的卡组第一个按钮是「查看」");
+check(/\n?\s*: `<button class="opbtn copy"/.test(dch), "HOT 卡组保留「复制」");
+check(!/<div class="ops">\s*<button class="opbtn copy"/.test(dch), "自己的卡组不再有无条件的「复制」按钮");
+check(/btn\.classList\.contains\("view"\)\)\{ openDetail\(deck\)/.test(html), "「查看」按钮绑定到 openDetail()");
+
 /* ---------- 汇总 ---------- */
 console.log(`\n${failed === 0 ? "✅ 全部校验通过" : `❌ ${failed} 项未通过`}`);
 process.exit(failed === 0 ? 0 : 1);
