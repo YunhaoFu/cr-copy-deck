@@ -16,7 +16,9 @@ import { createRequire } from "node:module";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const PORT = 8799;
-const BASE = `http://localhost:${PORT}/`;
+// 设了 E2E_BASE 就跑远端（如 https://cr-copy-deck.pages.dev/），否则自己拉一个本地开发服务器
+const REMOTE = (process.env.E2E_BASE || "").trim();
+const BASE = REMOTE ? (REMOTE.endsWith("/") ? REMOTE : REMOTE + "/") : `http://localhost:${PORT}/`;
 const KEEP = process.argv.includes("--keep");
 
 /* ---------------- 加载 puppeteer-core（可为全局安装） ---------------- */
@@ -44,28 +46,19 @@ function check(name, cond, extra) {
 }
 const section = t => console.log(`\n── ${t} ──`);
 
-/* ---------------- 开发服务器 ---------------- */
-const server = spawn(process.execPath, [join(root, "scripts/dev-server.mjs"), "--port", String(PORT)], {
+/* ---------------- 开发服务器（跑远端时不需要） ---------------- */
+const server = REMOTE ? null : spawn(process.execPath, [join(root, "scripts/dev-server.mjs"), "--port", String(PORT)], {
   cwd: root, stdio: ["ignore", "pipe", "pipe"],
 });
-server.stderr.on("data", d => {
-  const s = String(d);
-  if (!/ExperimentalWarning|trace-warnings/.test(s)) process.stderr.write("[server] " + s);
-});
-
-async function waitForServer() {
-  for (let i = 0; i < 60; i++) {
-    try {
-      const r = await fetch(BASE + "api/me");
-      if (r.status === 401 || r.status === 200) return;
-    } catch {}
-    await sleep(200);
-  }
-  throw new Error("开发服务器没起来");
+if (server) {
+  server.stderr.on("data", d => {
+    const s = String(d);
+    if (!/ExperimentalWarning|trace-warnings/.test(s)) process.stderr.write("[server] " + s);
+  });
 }
 
 function cleanup() {
-  try { server.kill("SIGKILL"); } catch {}
+  try { server && server.kill("SIGKILL"); } catch {}
 }
 
 /* ---------------- 浏览器 ---------------- */
@@ -137,10 +130,21 @@ async function checkSoon(page, fn, name, timeout = 12000) {
 
 /* ---------------- 流程 ---------------- */
 
+async function waitForServer() {
+  for (let i = 0; i < (REMOTE ? 20 : 60); i++) {
+    try {
+      const r = await fetch(BASE + "api/me");
+      if (r.status === 401 || r.status === 200 || r.status === 503) return;
+    } catch {}
+    await sleep(300);
+  }
+  throw new Error("目标站点没有响应：" + BASE);
+}
 await waitForServer();
-console.log("开发服务器已就绪：" + BASE);
+console.log((REMOTE ? "跑远端站点：" : "开发服务器已就绪：") + BASE);
 
-const USER = "队长阿福";
+// 跑远端时用一次性用户名，别和真实用户撞名
+const USER = REMOTE ? "e2e-" + Date.now().toString(36) : "队长阿福";
 const PASS = "123456";
 let recoveryCode = "";
 let deckId = "";
@@ -405,6 +409,21 @@ try {
   await D.page.screenshot({ path: join(shot, "ui-account.png") });
   await D.page.click("#acct .close");
   console.log("  截图已保存到 dist/theme-*.png、dist/ui-account.png");
+
+  if (REMOTE) {
+    section("15 清理：删掉这次跑远端用的测试账号");
+    const st = await D.page.evaluate(async () => {
+      const r = await fetch("api/me", {
+        method: "DELETE", credentials: "same-origin",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ confirm: "DELETE" }),
+      });
+      return r.status;
+    });
+    check("15.1 云端测试账号已删除（不留垃圾数据）", st === 200, "status=" + st);
+    check("15.2 删除后立即失效", (await phase(D.page)) === "on");
+  }
+  for (const d of [A, B]) await d.context.close().catch(() => {});
 } catch (e) {
   console.error("\n× 测试中断：" + e.message);
   for (const d of [A, B]) {

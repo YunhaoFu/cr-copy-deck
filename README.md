@@ -300,12 +300,19 @@ node scripts/dev-server.mjs    # 本地开发服务器：http://localhost:8788�
 本地起服务后就能在浏览器里把注册 / 登录 / 跨设备同步完整走一遍（`--db .dev.db` 可让数据落盘，
 默认内存库、重启即清空）。注意用 `http://localhost:8788` 而不是 IP —— 纯 IP 的 http 下浏览器会丢弃 Secure Cookie。
 
-还有一个浏览器端到端测试 `scripts/test-e2e.mjs`（49 项，真开 Chrome 跑「注册 → 建卡组 → 换设备登录 → 双向同步 → 删除 → 离线降级」）。
+还有一个浏览器端到端测试 `scripts/test-e2e.mjs`（51 项，真开 Chrome 跑「注册 → 建卡组 → 换设备登录 → 双向同步 → 删除 → 离线降级」）。
 它依赖 `puppeteer-core`，没有放进 `package.json`，需要时自备：
 
 ```bash
+# 默认跑本地（自己拉一个开发服务器，用内存库，不碰线上数据）
 npm i -D puppeteer-core@23 && CHROME_PATH=/usr/bin/google-chrome node scripts/test-e2e.mjs
+
+# 直接跑线上：会用一次性用户名 e2e-xxx 注册，跑完自动注销账号、不留垃圾数据
+E2E_BASE=https://cr-copy-deck.pages.dev node scripts/test-e2e.mjs
 ```
+
+> 跑线上前记得先 `npx wrangler login` 没法自动清理账号时，可以手动去 D1 里删：
+> `npx wrangler d1 execute cr-copy-deck-sync --remote --command "DELETE FROM users WHERE username_lc LIKE 'e2e-%'"`
 
 ### 发版流程
 
