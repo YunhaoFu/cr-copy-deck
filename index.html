@@ -1868,7 +1868,7 @@ $("#copyBtn").addEventListener("click", () => currentDetailDeck && copyText(webL
 $("#copyDeepBtn").addEventListener("click", () => currentDetailDeck && copyText(deepLink(currentDetailDeck)));
 document.querySelectorAll("[data-close]").forEach(b => b.addEventListener("click", () => $("#" + b.dataset.close).close()));
 
-const APP_VERSION = "v8.3 · 2026-09-14";
+const APP_VERSION = "v8.4 · 2026-09-14";
 $("#ver").textContent = "版本 " + APP_VERSION;
 console.log("cr-copy-deck", APP_VERSION);
 
@@ -1936,6 +1936,8 @@ const SYNC = (() => {
   let lastSyncAt = 0;
   let cloudCount = 0;
   let busy = false, applying = false, queued = false;
+  // 本地改动编号：每发生一次本地改动 +1。用来判断一次同步响应是否已经过时。
+  let localRev = 0;
   let timer = null;
   let pendingServer = null;
   let knownIds = new Set();
@@ -2079,12 +2081,17 @@ const SYNC = (() => {
     setPhase("on");
     try {
       collectTombstones();
+      // 记下"发出去那一刻"本地改动的编号。请求飞回来时如果编号变了，
+      // 说明这期间用户又改了东西 —— 那份响应已经过时，拿它覆盖本地会把刚做的改动抹掉。
+      // （线上一次往返要好几秒，这个窗口很大：注册后马上新建卡组就会中招。）
+      const revAtSend = localRev;
       const { status, data } = await api("sync", { method: "PUT", body: payload() });
       if (status === 401) { me = null; setPhase("anon"); showErr("unauthorized"); return; }
       if (status !== 200 || !data || !data.ok) {
         if (status === 503 || status === 0) { setPhase("offline"); }
         return;
       }
+      if (localRev !== revAtSend) { queued = true; return; }   // 让 finally 再排一轮
       applyServer(data);
       cloudCount = data.decks ? data.decks.length : decks.length;
       lastSyncAt = Date.now();
@@ -2328,6 +2335,7 @@ const SYNC = (() => {
 
   localChangeHook = kind => {
     if (applying) return;                        // 正在写回远端数据，别把自己的写入当成新变更
+    localRev++;                                  // 飞行中的同步响应据此判断是否已过时
     const t = Date.now() + offset;
     // 未登录时也记时间戳：这样登录后能把登录前改过的设置/主题推上去
     if (kind === "settings") stamps.settingsAt = t;

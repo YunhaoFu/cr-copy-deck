@@ -281,6 +281,15 @@ check(/DELETE FROM decks WHERE user_id = \? AND NOT EXISTS \(SELECT 1 FROM users
 check(/DELETE FROM user_settings WHERE user_id = \? AND NOT EXISTS/.test(syncSrc),
   "user_settings 也有同样的兜底");
 
+// I5b 云同步：飞行中的响应不能覆盖本地新改动。
+// 线上一次往返 5–7 秒，窗口很大：注册后马上新建卡组，响应回来时
+// applyServer() 会拿服务端的旧列表覆盖本地，新卡组凭空消失。
+check(/let localRev = 0;/.test(html), "有本地改动编号 localRev");
+check(/localRev\+\+;/.test(html), "每次本地改动都会递增 localRev");
+check(/const revAtSend = localRev;/.test(html), "发起同步前记下当前编号");
+check(/if \(localRev !== revAtSend\) \{ queued = true; return; \}/.test(html),
+  "响应回来时若本地又改过就跳过 applyServer 并重排一轮（防止覆盖本地新改动）");
+
 // I6 前端纵深防御：卡牌 id 不能裸插进 HTML
 check(!html.includes('title="未知卡牌 #${id}"'), "卡牌缩略图不再裸插 id");
 check(html.includes("escapeHtml(String(id))"), "卡牌缩略图的 id 已转义");

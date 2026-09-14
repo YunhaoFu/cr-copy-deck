@@ -435,6 +435,48 @@ try {
     await D.page.setViewport({ width: 1360, height: 950 });
   }
 
+  section("13.6 同步在飞行时新增卡组不能丢（回归测试）");
+  {
+    // 复现条件：一次同步请求还在飞的时候本地又改了东西。
+    // 本地跑不出问题（往返 5ms），线上往返 5–7 秒，窗口很大 ——
+    // 曾经的表现是：响应回来后 applyServer() 拿服务端的空列表覆盖本地，新卡组凭空消失。
+    const cdp = await D.page.createCDPSession();
+    await cdp.send("Network.emulateNetworkConditions", {
+      offline: false, latency: 3500,
+      downloadThroughput: 10 * 1024 * 1024 / 8, uploadThroughput: 5 * 1024 * 1024 / 8,
+    });
+    const before = await D.page.evaluate(() => decks.length);
+    await D.page.evaluate(() => { SYNC.flush(); });          // 故意不等它返回
+    await sleep(200);                                        // 此刻请求正在路上
+    await D.page.evaluate(() => {
+      decks.push(normDeck({
+        name: "飞行中新增", cards: META_DECKS[2].cards.map(c => ({ id: c.id, v: c.v })),
+        tower: 159000000, updatedAt: Date.now(),
+      }));
+      saveDecks(decks); render();
+    });
+    check("13.6.1 本地已新增（同步确实还在飞）", await D.page.evaluate(() => decks.length) === before + 1);
+
+    let landed = false;
+    const t0 = Date.now();
+    while (Date.now() - t0 < 60000) {
+      const c = await cloud(D.page).catch(() => null);
+      if (c && c.ok && c.decks.some(d => d.name === "飞行中新增")) { landed = true; break; }
+      await sleep(500);
+    }
+    check("13.6.2 最终同步到云端（没有被飞行中的响应覆盖掉）", landed);
+    check("13.6.3 本地也还在", await D.page.evaluate(() => decks.some(d => d.name === "飞行中新增")));
+
+    await cdp.send("Network.emulateNetworkConditions", {
+      offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1,
+    });
+    await D.page.evaluate(() => {
+      decks = decks.filter(d => d.name !== "飞行中新增");
+      saveDecks(decks); render();
+    });
+    await checkSoon(D.page, () => !SYNC._state().busy, "13.6.4 收尾同步已完成");
+  }
+
   section("14 截图（三套主题 + 账号弹窗）");
   const shot = join(root, "dist");
   await D.page.evaluate(() => {
