@@ -19,7 +19,16 @@
   header p{margin:0;color:var(--muted);font-size:13px}
   .hintbox{margin-top:14px;background:rgba(61,123,255,.10);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:13px;color:#cdd6ff}
   .hintbox b{color:#fff}
-  .rowhead{display:flex;align-items:center;gap:10px;margin:26px 0 10px}
+  .tabs{display:flex;gap:6px;margin:22px 0 0;border-bottom:1px solid var(--line);padding-bottom:0}
+  .tabs .tab{background:transparent;border:1px solid transparent;border-bottom:0;color:var(--muted);
+        border-radius:10px 10px 0 0;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;
+        letter-spacing:.4px;position:relative;top:1px}
+  .tabs .tab:hover{color:#dfe6ff}
+  .tabs .tab.on{background:linear-gradient(180deg,rgba(29,39,82,.9),rgba(21,28,64,.55));color:#fff;
+        border-color:var(--line)}
+  .devbox{margin:18px 0;padding:34px 20px;text-align:center;color:#8f9cc9;font-size:14px;
+        border:1px dashed var(--line);border-radius:14px;background:rgba(21,28,64,.35)}
+  .rowhead{display:flex;align-items:center;gap:10px;margin:16px 0 10px}
   .rowhead h2{font-size:15px;color:var(--muted);margin:0;font-weight:600;letter-spacing:.5px}
   .rowhead .sp{margin-left:auto}
   .ghostbtn{background:var(--panel-2);border:1px solid var(--line);color:var(--text);border-radius:10px;
@@ -180,21 +189,26 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>皇室战争 · 卡组一键导入</h1>
-    <p>点选一套卡组 → 复制导入链接 / 扫码 / 在手机上直接打开 → 游戏内自动载入卡组</p>
+    <h1>Clash Royale Deck Build &amp; Copy</h1>
     <div class="hintbox">
-      <b>电脑上用：</b>点开一套卡组 → 手机扫二维码 → 点页面上的 “Copy the deck” → 游戏弹出并载入卡组。<br>
-      <b>手机上用：</b>直接打开本页面 → 点 “在手机上导入” → 跳到游戏载入卡组。
+      <b>电脑端：</b>选择某卡组 → 手机扫二维码 → 点页面上的 “Copy the deck” → 游戏弹出并载入卡组。<br>
+      <b>手机端（安卓）：</b>选择某卡组 → 点 “在手机上导入” → 跳到游戏载入卡组。
     </div>
   </header>
 
+  <div class="tabs" id="tabs">
+    <button class="tab" data-tab="1v1">1v1</button>
+    <button class="tab" data-tab="hot1v1">HOT 1v1</button>
+    <button class="tab" data-tab="2v2">2v2</button>
+    <button class="tab" data-tab="hot2v2">HOT 2v2</button>
+  </div>
   <div class="rowhead">
-    <h2>卡组（我的 + 内置天梯）</h2>
+    <h2 id="secTitle">我的卡组</h2>
     <span class="sp"></span>
     <button id="addBtn" class="ghostbtn">＋ 添加卡组</button>
     <button id="settingsBtn" class="ghostbtn">⚙ 设置</button>
   </div>
-  <div class="fpanel">
+  <div class="fpanel" id="filterPanel">
     <div class="fhead">
       <span class="ftitle">筛选卡组</span>
       <span class="fhint">点一下：只看有它 ｜ 再点：只看没有它 ｜ 第三下取消</span>
@@ -205,11 +219,10 @@
     <div class="frow"><span class="flabel">法术</span><span class="fchips" id="fSpells"></span></div>
   </div>
   <div id="decks" class="decks"></div>
+  <div id="devbox" class="devbox" style="display:none">🚧 该功能正在开发中</div>
 
 
   <footer>
-    深链格式：<code style="color:#bcd0ff">clashroyale://copyDeck?deck=ID;ID;…&amp;l=Royals&amp;tt=159000000</code>，
-    经由官方跳转页 <code style="color:#bcd0ff">link.clashroyale.com</code> 打开游戏。
     卡牌数据与卡图来自 Supercell 官方 CDN，本页面为粉丝工具，与 Supercell 无官方关联。
     <span id="ver" style="margin-left:6px;color:#5f6c9c"></span>
   </footer>
@@ -329,7 +342,6 @@
       <div class="actions">
         <button class="btn primary sm" id="sSave">保存设置</button>
         <button class="btn ghost sm" id="sReset">恢复默认设置</button>
-        <button class="btn ghost sm" id="sSeed">恢复示例卡组</button>
         <button class="btn ghost sm" id="sMeta">恢复内置卡组</button>
       </div>
     </div>
@@ -497,10 +509,7 @@ const DEFAULT_SETTINGS = {
   rules: DEFAULT_RULES.map(r => ({ ...r })),
 };
 const DEFAULT_TOWER = 159000000;                 // 公主塔（链接里的 tt 默认值）
-const SEED_DECKS = [
-  { name: "示例 · 迫击炮", cards: [27000002,26000023,26000022,26000107,26000054,28000000,26000053,28000015] },
-  { name: "示例 · 幽灵战车", cards: [26000036,26000023,26000050,26000020,28000025,26000083,28000000,28000015] },
-];
+
 
 
 // 天梯热门卡组（来源：ClashRoyaleDeck 真实对战数据，已去重；觉醒按位置放在第 1/3 格）
@@ -776,16 +785,15 @@ function loadDecks(){
   let raw = null;
   try { raw = JSON.parse(localStorage.getItem(LS_DECKS) || "null"); } catch {}
   if(Array.isArray(raw)){
-    const out = raw.map(normDeck);
-    if(JSON.stringify(out) !== JSON.stringify(raw)) saveDecks(out);   // 顺带清理非法形态并写回
+    const out = raw.map(normDeck).filter(d => !/^示例\s*·/.test(d.name));   // 去掉历史遗留的示例卡组
+    if(JSON.stringify(out) !== JSON.stringify(raw)) saveDecks(out);          // 顺带清理非法形态并写回
     return out;
   }
   let v1 = null;
   try { v1 = JSON.parse(localStorage.getItem(LS_DECKS_V1) || "null"); } catch {}
   if(Array.isArray(v1) && v1.length) { const out = v1.map(normDeck); saveDecks(out); return out; }
-  const seeded = SEED_DECKS.map(normDeck);
-  saveDecks(seeded);
-  return seeded;
+  saveDecks([]);                       // 全新用户：空的「我的卡组」（不再放示例卡组）
+  return [];
 }
 function notifyRepairs(){
   if(repairNotes.length){
@@ -867,14 +875,41 @@ function renderDeckFilter(){
   $("#fClear").style.display = n ? "" : "none";
 }
 
+const TABS = {
+  "1v1":    { title: "我的卡组",   kind: "mine" },
+  "hot1v1": { title: "热门1v1卡组", kind: "hot" },
+  "2v2":    { title: "我的2v2卡组", kind: "dev" },
+  "hot2v2": { title: "热门2v2卡组", kind: "dev" },
+};
+let activeTab = "1v1";
+
+function copyDeckInto(deck, fromHot){
+  const base = deck.name.replace(/\s*·\s*复制\s*$/, "");
+  let name = base, n = 2;
+  const names = new Set(decks.map(d => d.name));
+  while(names.has(name)) name = `${base} · 复制${n++ > 2 ? n - 1 : ""}`;
+  decks.push(normDeck({ name, cards: deck.cards.map(c => ({ id: c.id, v: c.v })), tower: deck.tower }));
+  saveDecks(decks);
+  activeTab = "1v1";
+  render();
+  toast(`已复制「${base}」到「我的卡组」`);
+}
+
 function render(){
   decksEl.innerHTML = "";
-  renderDeckFilter();
+  const tab = TABS[activeTab];
+  document.querySelectorAll("#tabs .tab").forEach(t => t.classList.toggle("on", t.dataset.tab === activeTab));
+  $("#secTitle").textContent = tab.title;
+  $("#addBtn").style.display = tab.kind === "mine" ? "" : "none";
+  $("#filterPanel").style.display = tab.kind === "hot" ? "" : "none";
+  $("#devbox").style.display = tab.kind === "dev" ? "" : "none";
+  if(tab.kind === "dev") return;
   const metas = META_DECKS.filter(d => !metaHidden.has(d.name));
-  const items = [
-    ...decks.map((d, i) => ({ deck: d, i, user: true })),
-    ...metas.map(d => ({ deck: normDeck(d), user: false })),
-  ].filter(it => deckMatchFilter(it.deck));
+  renderDeckFilter();
+  const items = (tab.kind === "mine"
+    ? decks.map((d, i) => ({ deck: d, i, user: true }))
+    : metas.map(d => ({ deck: normDeck(d), user: false }))
+  ).filter(it => tab.kind === "mine" ? true : deckMatchFilter(it.deck));
   items.forEach(({ deck, i, user }) => {
     const cores = deck.cards.filter(c => (byId.get(c.id) || {}).core);
     const el = document.createElement("div");
@@ -889,6 +924,7 @@ function render(){
       </div>
       ${deckWarnings(deck).length ? `<div class="warnline">⛔ ${escapeHtml(deckWarnings(deck)[0])}</div>` : ""}
       <div class="ops">
+        <button class="opbtn copy" data-i="${i}" data-meta="${user ? "" : escapeHtml(deck.name)}" title="复制到「我的卡组」">复制</button>
         <button class="opbtn edit" data-i="${i}" data-meta="${user ? "" : escapeHtml(deck.name)}">编辑</button>
         <button class="opbtn del" data-i="${i}" data-meta="${user ? "" : escapeHtml(deck.name)}">删除</button>
       </div>`;
@@ -897,6 +933,10 @@ function render(){
       if(btn){
         e.stopPropagation();
         const metaName = btn.dataset.meta;
+        if(btn.classList.contains("copy")){
+          copyDeckInto(deck, !!metaName);
+          return;
+        }
         if(btn.classList.contains("del")){
           if(metaName){
             if(confirm(`从列表里移除内置卡组「${metaName}」？（可用「⚙ 设置 → 恢复内置卡组」找回）`)){
@@ -1347,6 +1387,12 @@ $("#fClear").addEventListener("click", () => { for(const k in DPICK) delete DPIC
 $("#sMeta").addEventListener("click", () => {
   metaHidden.clear(); saveMetaHidden(); render(); toast("已恢复内置卡组");
 });
+$("#tabs").addEventListener("click", e => {
+  const t = e.target.closest(".tab");
+  if(!t) return;
+  activeTab = t.dataset.tab;
+  render();
+});
 $("#settingsBtn").addEventListener("click", openSettings);
 $("#sSave").addEventListener("click", () => {
   settings = readSettingsForm();
@@ -1360,10 +1406,6 @@ $("#sReset").addEventListener("click", () => {
   decks = decks.map(normDeck);
   saveDecks(decks);
   openSettings(); render(); toast("已恢复默认设置");
-});
-$("#sSeed").addEventListener("click", () => {
-  SEED_DECKS.map(normDeck).forEach(d => decks.push(d));
-  saveDecks(decks); render(); $("#settings").close(); toast("示例卡组已添加");
 });
 $("#sRefresh").addEventListener("click", refreshDataView);
 $("#sClear").addEventListener("click", () => {
