@@ -1857,7 +1857,7 @@ $("#copyBtn").addEventListener("click", () => currentDetailDeck && copyText(webL
 $("#copyDeepBtn").addEventListener("click", () => currentDetailDeck && copyText(deepLink(currentDetailDeck)));
 document.querySelectorAll("[data-close]").forEach(b => b.addEventListener("click", () => $("#" + b.dataset.close).close()));
 
-const APP_VERSION = "v8.1 · 2026-09-14";
+const APP_VERSION = "v8.2 · 2026-09-14";
 $("#ver").textContent = "版本 " + APP_VERSION;
 console.log("cr-copy-deck", APP_VERSION);
 

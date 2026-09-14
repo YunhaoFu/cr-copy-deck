@@ -274,6 +274,12 @@ check(/cleanupSessions/.test(authSrc), "登录时清理该用户的过期会话"
 
 check(/MAX_SKEW_MS\) : 0;/.test(syncSrc), "sync 的设置/主题时间戳非法回退 0");
 check(/!Number\.isFinite\(at\)\) return fail\("invalid_deck", 400\)/.test(syncSrc), "墓碑时间戳非法直接 400（不默认成 now）");
+// 账号注销与同步写入之间有竞态窗口：PUT 先读到有效会话，注销随后删掉用户，
+// PUT 再把卡组写进去 → 孤儿行。收尾时用一条 NOT EXISTS 兜底。
+check(/DELETE FROM decks WHERE user_id = \? AND NOT EXISTS \(SELECT 1 FROM users WHERE id = \?\)/.test(syncSrc),
+  "sync 收尾会清掉因注销竞态产生的孤儿卡组");
+check(/DELETE FROM user_settings WHERE user_id = \? AND NOT EXISTS/.test(syncSrc),
+  "user_settings 也有同样的兜底");
 
 // I6 前端纵深防御：卡牌 id 不能裸插进 HTML
 check(!html.includes('title="未知卡牌 #${id}"'), "卡牌缩略图不再裸插 id");
