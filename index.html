@@ -3,7 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>皇室战争 · 卡组一键导入</title>
+<title>Clash Royale Deck Build &amp; Copy</title>
+<meta name="description" content="Clash Royale 卡组构建与一键复制：选卡组 → 复制链接 / 扫码 → 游戏内自动载入。">
+<meta name="theme-color" content="#f2f5fd">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23f5b93c'/%3E%3Cpath d='M7 22h18l-2-9-4 4-4-7-4 7-4-4z' fill='%23101538'/%3E%3C/svg%3E">
 <style>
 :root{
   --bg:#070a18; --bg2:#0b1024; --glow1:rgba(79,125,255,.16); --glow2:rgba(245,185,60,.10);
@@ -48,6 +51,9 @@ body{
 *::-webkit-scrollbar{width:9px;height:9px}
 *::-webkit-scrollbar-thumb{background:rgba(90,110,180,.45);border-radius:9px}
 *::-webkit-scrollbar-track{background:transparent}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:8px}
+button:not(:disabled){-webkit-tap-highlight-color:transparent}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 a{color:var(--gold);text-decoration:none}
 code{font-family:ui-monospace,Menlo,Consolas,monospace;color:#bcd0ff}
 .wrap{max-width:1100px;margin:0 auto;padding:26px 18px 64px}
@@ -163,6 +169,9 @@ header h1{
 .opbtn.del:hover{background:rgba(239,75,92,.2);border-color:var(--red)}
 
 /* ---------- 空态 / 开发中 ---------- */
+.dotpulse{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--gold);
+      margin-right:8px;vertical-align:1px;animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.35;transform:scale(.85)}50%{opacity:1;transform:scale(1.15)}}
 .devbox{margin:20px 0;padding:42px 20px;text-align:center;color:var(--muted);font-size:14px;
       border:1px dashed var(--line);border-radius:var(--r-lg);
       background:linear-gradient(180deg,rgba(29,39,82,.35),rgba(16,22,52,.25))}
@@ -370,7 +379,7 @@ footer{margin-top:40px;border-top:1px solid var(--line-2);padding-top:16px;font-
     <div class="etext">可以点「＋ 添加卡组」自己配一套，或去 HOT 1v1 里点「复制」搬一套过来。</div>
     <button class="btn primary" id="emptyAdd">＋ 添加卡组</button>
   </div>
-  <div id="devbox" class="devbox" style="display:none">该功能正在开发中 · Coming Soon</div>
+  <div id="devbox" class="devbox" style="display:none"><span class="dotpulse"></span>该功能正在开发中 · Coming Soon</div>
 
 
   <footer>
@@ -1659,6 +1668,8 @@ console.log("cr-copy-deck", APP_VERSION);
 const LS_THEME = "cr_theme";
 function applyTheme(t){
   document.documentElement.dataset.theme = t;
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if(meta) meta.setAttribute("content", t === "light" ? "#f2f5fd" : t === "neon" ? "#07040f" : "#070a18");
   try { localStorage.setItem(LS_THEME, t); } catch {}
 }
 const THEMES = [["light", "亮色"], ["space", "深空"], ["neon", "霓虹"]];
