@@ -43,10 +43,11 @@ function extractArray(name) {
   }
 }
 
-let CARDS, META_DECKS, META_CORES, META_SPELLS;
+let CARDS, META_DECKS, META_DUELS, META_CORES, META_SPELLS;
 try {
   CARDS = extractArray("CARDS");
   META_DECKS = extractArray("META_DECKS");
+  META_DUELS = extractArray("META_DUELS");
   META_CORES = extractArray("META_CORES");
   META_SPELLS = extractArray("META_SPELLS");
 } catch (e) {
@@ -73,8 +74,8 @@ for (const id of ["tabs", "filterPanel", "fCores", "fSpells", "themeBtn", "copyD
   check(html.includes(`id="${id}"`), `#${id} 存在`);
 }
 const tabOrder = [...html.matchAll(/<button class="tab" data-tab="([^"]+)"/g)].map((m) => m[1]);
-check(tabOrder.join(",") === "1v1,hot1v1,duel,2v2,hot2v2",
-  "标签页顺序 = 1v1 / HOT 1v1 / 决斗卡组 / 2v2 / HOT 2v2", tabOrder.join(","));
+check(tabOrder.join(",") === "1v1,hot1v1,duel,hotduel,2v2,hot2v2",
+  "标签页顺序 = 1v1 / HOT 1v1 / 决斗 / HOT 决斗 / 2v2 / HOT 2v2", tabOrder.join(","));
 
 /* ---------- C. 主题 ---------- */
 section("C. 主题");
@@ -332,6 +333,53 @@ check(/\? `<button class="opbtn view"/.test(dch), "自己的卡组第一个按�
 check(/\n?\s*: `<button class="opbtn copy"/.test(dch), "HOT 卡组保留「复制」");
 check(!/<div class="ops">\s*<button class="opbtn copy"/.test(dch), "自己的卡组不再有无条件的「复制」按钮");
 check(/btn\.classList\.contains\("view"\)\)\{ openDetail\(deck\)/.test(html), "「查看」按钮绑定到 openDetail()");
+
+/* ---------- K. HOT 决斗（4 套为一个整体） ---------- */
+section("K. HOT 决斗");
+
+check(Array.isArray(META_DUELS) && META_DUELS.length > 0, "META_DUELS 存在且非空", `${META_DUELS && META_DUELS.length} 组`);
+check(META_DUELS.every(c => Array.isArray(c.decks) && c.decks.length === 4),
+  "每个组合都是 4 套卡组（决斗的单位是 4 套，不是 1 套）");
+check(META_DUELS.every(c => c.decks.every(d => Array.isArray(d.cards) && d.cards.length === 8)),
+  "组合里每套都是 8 张卡");
+check(META_DUELS.every(c => c.decks.every(d => idSet.has(d.tower))),
+  "每套都有合法的塔防 id");
+check(META_DUELS.every(c => typeof c.rank === "number" && typeof c.win === "number"),
+  "每个组合都有排名与胜率");
+
+// 决斗最核心的规则：同一个组合的 4 套之间，卡不能重复
+const comboDupes = [];
+for (const c of META_DUELS) {
+  const seen = new Set();
+  for (const d of c.decks) for (const cd of d.cards) {
+    if (seen.has(cd.id)) comboDupes.push(`#${c.rank}:${cd.id}`);
+    seen.add(cd.id);
+  }
+}
+check(comboDupes.length === 0, "同一组合的 4 套之间没有重复卡牌", comboDupes.slice(0, 5).join(","));
+check(META_DUELS.every(c => c.decks.every(d => d.cards.every(cd => idSet.has(cd.id)))),
+  "组合里的卡都在卡池内");
+
+// 形态必须落在合法槽位（觉醒只能 1/3 格，精英只能 2/3 格）
+check(META_DUELS.every(c => c.decks.every(d => d.cards.every((cd, i) => cd.v !== "evo" || i === 0 || i === 2))),
+  "决斗组合里觉醒只出现在第 1 / 3 格");
+check(META_DUELS.every(c => c.decks.every(d => d.cards.every((cd, i) => cd.v !== "hero" || i === 1 || i === 2))),
+  "决斗组合里精英只出现在第 2 / 3 格");
+
+// 组合之间不能完全一样
+const comboKeys = META_DUELS.map(c => c.decks.map(d => d.cards.map(x => x.id).join(",")).join("|"));
+check(new Set(comboKeys).size === comboKeys.length, "组合之间没有完全重复的");
+
+// UI 挂点
+check(html.includes('data-tab="hotduel"'), "有 HOT 决斗 标签页按钮");
+check(/\"hotduel\":\{ title: "热门决斗组合",\s+kind: "hotduel" \}/.test(html), "TABS 里注册了 hotduel");
+check(html.includes('data-tab="duel">决斗<'), "「决斗卡组」已改名为「决斗」");
+check(!html.includes("决斗卡组"), "页面里不再出现「决斗卡组」");
+check(html.includes("function duelCardHtml("), "有决斗组合的渲染函数");
+check(/\.decks\.duelmode\{grid-template-columns:1fr\}/.test(html), "决斗组合卡片占满整行");
+check(/render\(\)\{[\s\S]{0,700}?tab\.kind === "hotduel"/.test(html), "render() 里有决斗组合分支");
+check(/const drow = e\.target\.closest\("\.duelrow"\)/.test(html), "点组合里的一套会打开该套详情");
+check(html.includes("组合胜率"), "组合卡片上标了组合胜率");
 
 /* ---------- 汇总 ---------- */
 console.log(`\n${failed === 0 ? "✅ 全部校验通过" : `❌ ${failed} 项未通过`}`);

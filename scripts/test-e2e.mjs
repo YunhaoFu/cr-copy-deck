@@ -416,21 +416,26 @@ try {
       const tabs = document.querySelector("#tabs");
       const last = tabs.querySelector(".tab:last-child").getBoundingClientRect();
       const box = tabs.getBoundingClientRect();
+      const rows = new Set([...tabs.querySelectorAll(".tab")].map(t => Math.round(t.getBoundingClientRect().top))).size;
       const wrap = document.querySelector(".wrap").getBoundingClientRect();
       const decks = [...document.querySelectorAll("#decks .deck")].map(d => d.getBoundingClientRect());
       return {
         lastTabRight: Math.round(last.right),
+        lastTabBottom: Math.round(last.bottom),
         tabsRight: Math.round(box.right),
+        tabsBottom: Math.round(box.bottom),
+        tabRows: rows,
         tabsScrollW: tabs.scrollWidth,
         tabsClientW: tabs.clientWidth,
         deckOverflow: decks.filter(d => Math.round(d.right) > Math.round(wrap.right) + 1).length,
         tabLabels: [...tabs.querySelectorAll(".tab")].map(t => t.textContent.trim()),
       };
     });
-    check("13.5.1 手机上 5 个标签都放得下（HOT 2v2 不被截）",
-      fit.lastTabRight <= fit.tabsRight + 1 && fit.tabsScrollW <= fit.tabsClientW + 1, JSON.stringify(fit));
-    check("13.5.2 五个标签齐全且顺序不变",
-      fit.tabLabels.join(",") === "1v1,HOT 1v1,决斗卡组,2v2,HOT 2v2", fit.tabLabels.join(","));
+    check("13.5.1 手机上 6 个标签全部可见（自动换行，不裁切）",
+      fit.lastTabRight <= fit.tabsRight + 1 && fit.lastTabBottom <= fit.tabsBottom + 1 &&
+      fit.tabsScrollW <= fit.tabsClientW + 1, JSON.stringify(fit));
+    check("13.5.2 六个标签齐全且顺序不变",
+      fit.tabLabels.join(",") === "1v1,HOT 1v1,决斗,HOT 决斗,2v2,HOT 2v2", fit.tabLabels.join(","));
     check("13.5.3 卡组卡片没有横向溢出", fit.deckOverflow === 0, `溢出 ${fit.deckOverflow} 张`);
     await D.page.setViewport({ width: 1360, height: 950 });
   }
@@ -477,6 +482,52 @@ try {
     await checkSoon(D.page, () => !SYNC._state().busy, "13.6.4 收尾同步已完成");
   }
 
+  section("13.7 HOT 决斗：4 套卡组为一个整体");
+  {
+    await D.page.evaluate(() => { activeTab = "hotduel"; render(); });
+    await sleep(900);
+    const g = await D.page.evaluate(() => {
+      const combos = [...document.querySelectorAll("#decks .duel")];
+      const rows = [...document.querySelectorAll("#decks .duelrow")];
+      return {
+        combos: combos.length,
+        rows: rows.length,
+        per: combos.map(c => c.querySelectorAll(".duelrow").length),
+        cardsPerRow: rows.map(r => r.querySelectorAll(".thumbs .t").length),
+        viewBtns: document.querySelectorAll("#decks .duelrow .opbtn.view").length,
+        cols: getComputedStyle(document.querySelector("#decks")).gridTemplateColumns,
+        title: document.querySelector("#secTitle").textContent,
+        heads: combos.slice(0, 1).map(c => c.querySelector(".dhead").textContent.replace(/\s+/g, " ").trim()),
+      };
+    });
+    check("13.7.1 渲染出 10 个决斗组合", g.combos === 10, `combos=${g.combos}`);
+    check("13.7.2 每个组合都是 4 套（共 40 套）", g.rows === 40 && g.per.every(n => n === 4), JSON.stringify(g.per));
+    check("13.7.3 每套都渲染出 8 张卡", g.cardsPerRow.every(n => n === 8), JSON.stringify(g.cardsPerRow.slice(0, 3)));
+    check("13.7.4 每套都有「查看」按钮", g.viewBtns === 40, `view=${g.viewBtns}`);
+    check("13.7.5 组合卡片占满整行（没被挤成多列）", g.cols.trim().split(/\s+/).length === 1, g.cols);
+    check("13.7.6 区块标题 = 热门决斗组合", g.title === "热门决斗组合", g.title);
+    check("13.7.7 组合卡片带排名与胜率", /#1.*组合胜率.*%/.test(g.heads[0] || ""), g.heads[0]);
+
+    await D.page.click('#decks .duelrow[data-ci="0"][data-di="1"]');
+    await D.page.waitForSelector("#detail[open]", { timeout: 5000 });
+    const dt = await D.page.evaluate(() => ({
+      cards: document.querySelectorAll("#dCards .c").length,
+      link: document.querySelector("#linkText").textContent,
+      title: document.querySelector("#dTitle").textContent,
+    }));
+    check("13.7.8 点组合里的一套 → 详情弹窗（8 张卡 + 导入链接）",
+      dt.cards === 8 && dt.link.includes("copyDeck"), JSON.stringify({ cards: dt.cards, link: dt.link.slice(0, 40) }));
+    await D.page.evaluate(() => { document.querySelector("#detail").close(); });
+
+    await D.page.evaluate(() => { activeTab = "duel"; render(); });
+    await sleep(400);
+    const duelTab = await D.page.evaluate(() => ({
+      title: document.querySelector("#secTitle").textContent,
+      dev: getComputedStyle(document.querySelector("#devbox")).display !== "none",
+    }));
+    check("13.7.9 「决斗」已改名（仍是开发中占位）", duelTab.title === "决斗" && duelTab.dev, JSON.stringify(duelTab));
+  }
+
   section("14 截图（三套主题 + 账号弹窗）");
   const shot = join(root, "dist");
   await D.page.evaluate(() => {
@@ -503,8 +554,11 @@ try {
     await sleep(400);
     await D.page.screenshot({ path: join(shot, `theme-${t}.png`) });
   }
-  await D.page.evaluate(() => { curTheme = "light"; applyTheme("light"); });
-  await sleep(300);
+  await D.page.evaluate(() => { curTheme = "light"; applyTheme("light"); activeTab = "hotduel"; render(); });
+  await sleep(2500);
+  await D.page.screenshot({ path: join(shot, "ui-hotduel.png"), clip: { x: 0, y: 0, width: 1360, height: 1000 } });
+  await D.page.evaluate(() => { activeTab = "1v1"; render(); });
+  await sleep(600);
   await D.page.click("#acctBtn");
   await D.page.waitForSelector("#acct[open]", { timeout: 5000 });
   await sleep(400);

@@ -170,6 +170,27 @@ header h1{
 .opbtn.del{color:#ffc2c9;border-color:rgba(239,75,92,.45)}
 .opbtn.del:hover{background:rgba(239,75,92,.2);border-color:var(--red)}
 
+/* ---------- HOT 决斗：一个组合 = 4 套卡组 ---------- */
+.decks.duelmode{grid-template-columns:1fr}                 /* 组合卡片占满整行 */
+.duel{position:relative;border:1px solid var(--line);border-radius:var(--r-lg);
+      background:var(--panel);padding:11px 13px 9px;box-shadow:var(--sh)}
+.duel .dhead{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--muted);
+      padding-bottom:8px;margin-bottom:7px;border-bottom:1px dashed var(--line-2)}
+.duel .dhead b{color:var(--green);font-size:13.5px}
+.duel .drank{background:linear-gradient(180deg,#ffd977,var(--gold));color:#241a00;font-weight:800;
+      border-radius:999px;padding:1px 9px;font-size:12px;line-height:17px}
+.duel .dhint{margin-left:auto;font-size:11.5px;color:var(--dim)}
+.duelrow{display:flex;align-items:center;gap:12px;padding:6px 7px;border-radius:var(--r-md);cursor:pointer;transition:.15s}
+.duelrow + .duelrow{margin-top:3px}
+.duelrow:hover{background:rgba(127,150,220,.1)}
+.duelrow .dname{flex:0 0 172px;min-width:0;display:flex;align-items:baseline;gap:7px;
+      font-size:12.5px;font-weight:600}
+.duelrow .dname .dt{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.duelrow .dname .dw{flex:0 0 auto;color:var(--muted);font-weight:400;font-size:11.5px}
+/* 组合卡片占满整行，卡图得设个上限 —— 否则 8 张卡会被拉到 130px 宽、整行 170px 高 */
+.duelrow .tilecards{flex:1 1 auto;min-width:0;max-width:640px}
+.duelrow .opbtn{flex:0 0 auto;margin-left:auto}
+
 /* ---------- 空态 / 开发中 ---------- */
 .dotpulse{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--gold);
       margin-right:8px;vertical-align:1px;animation:pulse 1.6s ease-in-out infinite}
@@ -342,6 +363,9 @@ footer{margin-top:40px;border-top:1px solid var(--line-2);padding-top:16px;font-
 :root[data-theme="light"] .ghostbtn,
 :root[data-theme="light"] .mv,
 :root[data-theme="light"] .themebtn{background:#fff;color:#33406b}
+:root[data-theme="light"] .duel .drank{background:linear-gradient(180deg,#f0c25a,var(--gold));color:#fff}
+:root[data-theme="light"] .duelrow:hover{background:rgba(79,125,255,.1)}
+:root[data-theme="light"] .duel .dhead b{color:#0f5c33}
 /* 星标不能跟着上面那组一起被涂成同一个深蓝 —— 那组选择器权重比 .star.purple 高，
    会把紫/橙/银全压成同一种颜色，在亮色主题下就完全看不出形态了。
    所以这里只给星标设背景，颜色按形态单独定，并且换成在白底上有对比度的色值。 */
@@ -388,8 +412,18 @@ footer{margin-top:40px;border-top:1px solid var(--line-2);padding-top:16px;font-
   header h1{font-size:22px}
   /* 5 个标签在 393px 宽的机型上总宽放不下，「HOT 2v2」会被截掉只剩一个字。
      容器虽然能横向滚动，但手机上滚不动也看不出来 —— 直接缩小内边距让它们全放下。 */
-  .tabs{margin-top:18px;gap:4px;padding:4px;border-radius:999px}
+  /* 现在是 6 个标签，一行放不下 —— 改成换行两排，而不是把最后一个截掉 */
+  .tabs{margin-top:18px;gap:4px;padding:4px;border-radius:16px;flex-wrap:wrap;justify-content:center;width:100%}
   .tabs .tab{padding:7px 12px;font-size:12.5px;letter-spacing:0}
+  /* 决斗组合：窄屏上卡组名单独占一行，卡图 + 查看 排下一行 */
+  .duel{padding:10px 10px 8px}
+  .duel .dhint{display:none}
+  /* 第一行：卡组名 + 胜率（左） 和「查看」（右）；第二行：8 张卡图占满
+     —— 不让「查看」单独占一行，40 套能省下 1600px 的滚动 */
+  .duelrow{flex-wrap:wrap;gap:6px;padding:8px 6px}
+  .duelrow .dname{order:1;flex:1 1 auto}
+  .duelrow .opbtn{order:2;flex:0 0 auto;margin-left:auto}
+  .duelrow .tilecards{order:3;flex:1 1 100%;max-width:none}
   .decks{grid-template-columns:1fr}
   .deck .title{padding-right:0}
   .selwrap{flex-direction:column;align-items:stretch;gap:10px}
@@ -444,7 +478,8 @@ footer{margin-top:40px;border-top:1px solid var(--line-2);padding-top:16px;font-
   <div class="tabs" id="tabs">
     <button class="tab" data-tab="1v1">1v1</button>
     <button class="tab" data-tab="hot1v1">HOT 1v1</button>
-    <button class="tab" data-tab="duel">决斗卡组</button>
+    <button class="tab" data-tab="duel">决斗</button>
+    <button class="tab" data-tab="hotduel">HOT 决斗</button>
     <button class="tab" data-tab="2v2">2v2</button>
     <button class="tab" data-tab="hot2v2">HOT 2v2</button>
   </div>
@@ -611,9 +646,9 @@ footer{margin-top:40px;border-top:1px solid var(--line-2);padding-top:16px;font-
     <div class="sethint" id="copyDlgName"></div>
     <div class="actions" style="margin-top:14px">
       <button class="btn primary" id="copyTo1v1">1v1 · 我的卡组</button>
-      <button class="btn ghost" id="copyToDuel" disabled title="决斗卡组正在开发中">决斗卡组 · 开发中</button>
+      <button class="btn ghost" id="copyToDuel" disabled title="决斗还在开发中">决斗 · 开发中</button>
     </div>
-    <div class="hint">「决斗卡组」还在开发中，暂时只能复制到 1v1。2v2 的 HOT 卡组会直接复制到 2v2。</div>
+    <div class="hint">「决斗」还在开发中，暂时只能复制到 1v1。想看现成的决斗 4 套组合，去「HOT 决斗」。</div>
   </div>
 </dialog>
 
@@ -977,6 +1012,11 @@ const META_DECKS = [
   {"name": "Royal Hogs Control #5", "cards": [{"id": 26000047, "v": "evo"}, {"id": 28000015, "v": "hero"}, {"id": 27000012, "v": "evo"}, {"id": 26000084, "v": ""}, {"id": 28000001, "v": ""}, {"id": 26000052, "v": ""}, {"id": 26000057, "v": ""}, {"id": 26000059, "v": ""}], "tower": 159000000, "wc": [26000059]},
   {"name": "Furnace Control", "cards": [{"id": 26000047, "v": "evo"}, {"id": 27000009, "v": "hero"}, {"id": 27000010, "v": "evo"}, {"id": 28000002, "v": ""}, {"id": 28000024, "v": ""}, {"id": 26000046, "v": ""}, {"id": 26000042, "v": ""}, {"id": 26000107, "v": ""}], "tower": 159000000, "wc": [27000010]}
 ];
+
+/* 部落战决斗：最大的单位是「4 套卡组」，4 套之间卡不能重复。
+   数据来自 RoyaleTracker 的 Clan War 组合榜（真实对战胜率排序），
+   由 scripts/gen-duels.mjs 抓取并重排到本应用的槽位规则，改数据请重跑那个脚本。 */
+const META_DUELS = [{"rank":1,"win":61.4,"decks":[{"name":"GK Evo Ram Cart MW","win":64.9,"tower":159000000,"cards":[{"id":26000036,"v":"evo"},{"id":26000074,"v":""},{"id":26000043,"v":"evo"},{"id":26000054,"v":""},{"id":26000083,"v":""},{"id":26000052,"v":""},{"id":28000001,"v":""},{"id":28000016,"v":""}]},{"name":"HeroGiant DP EvoWiz Rage","win":62.6,"tower":159000000,"cards":[{"id":26000017,"v":"evo"},{"id":26000003,"v":"hero"},{"id":26000022,"v":"evo"},{"id":26000033,"v":""},{"id":26000018,"v":""},{"id":26000027,"v":""},{"id":28000002,"v":""},{"id":27000007,"v":""}]},{"name":"EGiant GobHut Evo BBD Nado","win":62.3,"tower":159000000,"cards":[{"id":26000015,"v":"evo"},{"id":26000034,"v":"hero"},{"id":26000000,"v":"evo"},{"id":26000085,"v":""},{"id":28000007,"v":""},{"id":27000001,"v":""},{"id":28000012,"v":""},{"id":28000015,"v":""}]},{"name":"SK Bait","win":60.8,"tower":159000000,"cards":[{"id":26000056,"v":"evo"},{"id":26000069,"v":""},{"id":26000012,"v":"evo"},{"id":26000097,"v":""},{"id":26000040,"v":""},{"id":28000026,"v":""},{"id":26000053,"v":""},{"id":27000000,"v":""}]}]},{"rank":2,"win":61.1,"decks":[{"name":"GK Evo Ram Cart MW","win":64.9,"tower":159000000,"cards":[{"id":26000036,"v":"evo"},{"id":26000074,"v":""},{"id":26000043,"v":"evo"},{"id":26000054,"v":""},{"id":26000083,"v":""},{"id":26000052,"v":""},{"id":28000001,"v":""},{"id":28000016,"v":""}]},{"name":"HeroGiant DP EvoWiz Rage","win":62.6,"tower":159000000,"cards":[{"id":26000017,"v":"evo"},{"id":26000003,"v":"hero"},{"id":26000022,"v":"evo"},{"id":26000033,"v":""},{"id":26000018,"v":""},{"id":26000027,"v":""},{"id":28000002,"v":""},{"id":27000007,"v":""}]},{"name":"EGiant GobHut Evo BBD Nado","win":62.3,"tower":159000000,"cards":[{"id":26000015,"v":"evo"},{"id":26000034,"v":"hero"},{"id":26000000,"v":"evo"},{"id":26000085,"v":""},{"id":28000007,"v":""},{"id":27000001,"v":""},{"id":28000012,"v":""},{"id":28000015,"v":""}]},{"name":"MM EvoCannon 3.0 Cycle","win":60.1,"tower":159000000,"cards":[{"id":26000026,"v":"evo"},{"id":26000065,"v":""},{"id":27000000,"v":"evo"},{"id":28000004,"v":""},{"id":28000003,"v":""},{"id":26000002,"v":""},{"id":26000030,"v":""},{"id":28000011,"v":""}]}]},{"rank":3,"win":60.8,"decks":[{"name":"GK Evo Ram Cart MW","win":64.9,"tower":159000000,"cards":[{"id":26000036,"v":"evo"},{"id":26000074,"v":""},{"id":26000043,"v":"evo"},{"id":26000054,"v":""},{"id":26000083,"v":""},{"id":26000052,"v":""},{"id":28000001,"v":""},{"id":28000016,"v":""}]},{"name":"HeroGiant DP EvoWiz Rage","win":62.6,"tower":159000000,"cards":[{"id":26000017,"v":"evo"},{"id":26000003,"v":"hero"},{"id":26000022,"v":"evo"},{"id":26000033,"v":""},{"id":26000018,"v":""},{"id":26000027,"v":""},{"id":28000002,"v":""},{"id":27000007,"v":""}]},{"name":"EGiant GobHut Evo BBD Nado","win":62.3,"tower":159000000,"cards":[{"id":26000015,"v":"evo"},{"id":26000034,"v":"hero"},{"id":26000000,"v":"evo"},{"id":26000085,"v":""},{"id":28000007,"v":""},{"id":27000001,"v":""},{"id":28000012,"v":""},{"id":28000015,"v":""}]},{"name":"LavaLoon SD","win":59,"tower":159000000,"cards":[{"id":28000008,"v":"evo"},{"id":26000011,"v":"hero"},{"id":26000039,"v":"hero"},{"id":26000029,"v":""},{"id":26000006,"v":""},{"id":28000000,"v":""},{"id":26000080,"v":""},{"id":27000009,"v":""}]}]},{"rank":4,"win":60.6,"decks":[{"name":"GK Evo Ram Cart MW","win":64.9,"tower":159000000,"cards":[{"id":26000036,"v":"evo"},{"id":26000074,"v":""},{"id":26000043,"v":"evo"},{"id":26000054,"v":""},{"id":26000083,"v":""},{"id":26000052,"v":""},{"id":28000001,"v":""},{"id":28000016,"v":""}]},{"name":"HeroGiant DP EvoWiz Rage","win":62.6,"tower":159000000,"cards":[{"id":26000017,"v":"evo"},{"id":26000003,"v":"hero"},{"id":26000022,"v":"evo"},{"id":26000033,"v":""},{"id":26000018,"v":""},{"id":26000027,"v":""},{"id":28000002,"v":""},{"id":27000007,"v":""}]},{"name":"SK Bait","win":60.8,"tower":159000000,"cards":[{"id":26000056,"v":"evo"},{"id":26000069,"v":""},{"id":26000012,"v":"evo"},{"id":26000097,"v":""},{"id":26000040,"v":""},{"id":28000026,"v":""},{"id":26000053,"v":""},{"id":27000000,"v":""}]},{"name":"EvoLJ Double Dragon Bowler Freeze","win":59.4,"tower":159000000,"cards":[{"id":26000035,"v":"evo"},{"id":26000006,"v":"hero"},{"id":26000037,"v":"evo"},{"id":26000015,"v":""},{"id":26000034,"v":""},{"id":28000012,"v":""},{"id":28000005,"v":""},{"id":28000015,"v":""}]}]},{"rank":5,"win":60.3,"decks":[{"name":"GK Evo Ram Cart MW","win":64.9,"tower":159000000,"cards":[{"id":26000036,"v":"evo"},{"id":26000074,"v":""},{"id":26000043,"v":"evo"},{"id":26000054,"v":""},{"id":26000083,"v":""},{"id":26000052,"v":""},{"id":28000001,"v":""},{"id":28000016,"v":""}]},{"name":"HeroGiant DP EvoWiz Rage","win":62.6,"tower":159000000,"cards":[{"id":26000017,"v":"evo"},{"id":26000003,"v":"hero"},{"id":26000022,"v":"evo"},{"id":26000033,"v":""},{"id":26000018,"v":""},{"id":26000027,"v":""},{"id":28000002,"v":""},{"id":27000007,"v":""}]},{"name":"EGiant GobHut Evo BBD Nado","win":62.3,"tower":159000000,"cards":[{"id":26000015,"v":"evo"},{"id":26000034,"v":"hero"},{"id":26000000,"v":"evo"},{"id":26000085,"v":""},{"id":28000007,"v":""},{"id":27000001,"v":""},{"id":28000012,"v":""},{"id":28000015,"v":""}]},{"name":"RamRider EvoMK Furnace EvoGhost","win":58.8,"tower":159000000,"cards":[{"id":26000055,"v":"evo"},{"id":26000102,"v":"hero"},{"id":26000050,"v":"evo"},{"id":26000051,"v":""},{"id":28000025,"v":""},{"id":28000000,"v":""},{"id":27000010,"v":""},{"id":28000008,"v":""}]}]},{"rank":6,"win":60,"decks":[{"name":"GK Evo Ram Cart MW","win":64.9,"tower":159000000,"cards":[{"id":26000036,"v":"evo"},{"id":26000074,"v":""},{"id":26000043,"v":"evo"},{"id":26000054,"v":""},{"id":26000083,"v":""},{"id":26000052,"v":""},{"id":28000001,"v":""},{"id":28000016,"v":""}]},{"name":"HeroGiant DP EvoWiz Rage","win":62.6,"tower":159000000,"cards":[{"id":26000017,"v":"evo"},{"id":26000003,"v":"hero"},{"id":26000022,"v":"evo"},{"id":26000033,"v":""},{"id":26000018,"v":""},{"id":26000027,"v":""},{"id":28000002,"v":""},{"id":27000007,"v":""}]},{"name":"SK Bait","win":60.8,"tower":159000000,"cards":[{"id":26000056,"v":"evo"},{"id":26000069,"v":""},{"id":26000012,"v":"evo"},{"id":26000097,"v":""},{"id":26000040,"v":""},{"id":28000026,"v":""},{"id":26000053,"v":""},{"id":27000000,"v":""}]},{"name":"EGiant Evo BBD Nado","win":58.8,"tower":159000000,"cards":[{"id":26000015,"v":"evo"},{"id":26000034,"v":"hero"},{"id":27000012,"v":"evo"},{"id":26000085,"v":""},{"id":26000000,"v":""},{"id":28000007,"v":""},{"id":28000012,"v":""},{"id":28000015,"v":""}]}]},{"rank":7,"win":60,"decks":[{"name":"GK Evo Ram Cart MW","win":64.9,"tower":159000000,"cards":[{"id":26000036,"v":"evo"},{"id":26000074,"v":""},{"id":26000043,"v":"evo"},{"id":26000054,"v":""},{"id":26000083,"v":""},{"id":26000052,"v":""},{"id":28000001,"v":""},{"id":28000016,"v":""}]},{"name":"HeroGiant DP EvoWiz Rage","win":62.6,"tower":159000000,"cards":[{"id":26000017,"v":"evo"},{"id":26000003,"v":"hero"},{"id":26000022,"v":"evo"},{"id":26000033,"v":""},{"id":26000018,"v":""},{"id":26000027,"v":""},{"id":28000002,"v":""},{"id":27000007,"v":""}]},{"name":"SK Bait","win":60.8,"tower":159000000,"cards":[{"id":26000056,"v":"evo"},{"id":26000069,"v":""},{"id":26000012,"v":"evo"},{"id":26000097,"v":""},{"id":26000040,"v":""},{"id":28000026,"v":""},{"id":26000053,"v":""},{"id":27000000,"v":""}]},{"name":"RamRider EvoMK Furnace EvoGhost","win":58.8,"tower":159000000,"cards":[{"id":26000055,"v":"evo"},{"id":26000102,"v":"hero"},{"id":26000050,"v":"evo"},{"id":26000051,"v":""},{"id":28000025,"v":""},{"id":28000000,"v":""},{"id":27000010,"v":""},{"id":28000008,"v":""}]}]},{"rank":8,"win":59.3,"decks":[{"name":"GK Evo Ram Cart MW","win":64.9,"tower":159000000,"cards":[{"id":26000036,"v":"evo"},{"id":26000074,"v":""},{"id":26000043,"v":"evo"},{"id":26000054,"v":""},{"id":26000083,"v":""},{"id":26000052,"v":""},{"id":28000001,"v":""},{"id":28000016,"v":""}]},{"name":"HeroGiant DP EvoWiz Rage","win":62.6,"tower":159000000,"cards":[{"id":26000017,"v":"evo"},{"id":26000003,"v":"hero"},{"id":26000022,"v":"evo"},{"id":26000033,"v":""},{"id":26000018,"v":""},{"id":26000027,"v":""},{"id":28000002,"v":""},{"id":27000007,"v":""}]},{"name":"EGiant GobHut Evo BBD Nado","win":62.3,"tower":159000000,"cards":[{"id":26000015,"v":"evo"},{"id":26000034,"v":"hero"},{"id":26000000,"v":"evo"},{"id":26000085,"v":""},{"id":28000007,"v":""},{"id":27000001,"v":""},{"id":28000012,"v":""},{"id":28000015,"v":""}]},{"name":"HeroGobs EvoGhost Bait","win":57.5,"tower":159000000,"cards":[{"id":26000056,"v":"evo"},{"id":26000002,"v":"hero"},{"id":26000050,"v":"evo"},{"id":26000097,"v":""},{"id":28000003,"v":""},{"id":26000040,"v":""},{"id":26000053,"v":""},{"id":28000011,"v":""}]}]},{"rank":9,"win":58.5,"decks":[{"name":"GK Evo Ram Cart MW","win":64.9,"tower":159000000,"cards":[{"id":26000036,"v":"evo"},{"id":26000074,"v":""},{"id":26000043,"v":"evo"},{"id":26000054,"v":""},{"id":26000083,"v":""},{"id":26000052,"v":""},{"id":28000001,"v":""},{"id":28000016,"v":""}]},{"name":"HeroGiant DP EvoWiz Rage","win":62.6,"tower":159000000,"cards":[{"id":26000017,"v":"evo"},{"id":26000003,"v":"hero"},{"id":26000022,"v":"evo"},{"id":26000033,"v":""},{"id":26000018,"v":""},{"id":26000027,"v":""},{"id":28000002,"v":""},{"id":27000007,"v":""}]},{"name":"SK Bait","win":60.8,"tower":159000000,"cards":[{"id":26000056,"v":"evo"},{"id":26000069,"v":""},{"id":26000012,"v":"evo"},{"id":26000097,"v":""},{"id":26000040,"v":""},{"id":28000026,"v":""},{"id":26000053,"v":""},{"id":27000000,"v":""}]},{"name":"Double Dragon Bowler Freeze Nado","win":57.8,"tower":159000000,"cards":[{"id":26000015,"v":"evo"},{"id":26000006,"v":"hero"},{"id":26000037,"v":"evo"},{"id":26000035,"v":""},{"id":26000034,"v":""},{"id":28000012,"v":""},{"id":28000005,"v":""},{"id":28000015,"v":""}]}]},{"rank":10,"win":57.2,"decks":[{"name":"GK Evo Ram Cart MW","win":64.9,"tower":159000000,"cards":[{"id":26000036,"v":"evo"},{"id":26000074,"v":""},{"id":26000043,"v":"evo"},{"id":26000054,"v":""},{"id":26000083,"v":""},{"id":26000052,"v":""},{"id":28000001,"v":""},{"id":28000016,"v":""}]},{"name":"HeroGiant DP EvoWiz Rage","win":62.6,"tower":159000000,"cards":[{"id":26000017,"v":"evo"},{"id":26000003,"v":"hero"},{"id":26000022,"v":"evo"},{"id":26000033,"v":""},{"id":26000018,"v":""},{"id":26000027,"v":""},{"id":28000002,"v":""},{"id":27000007,"v":""}]},{"name":"SK Bait","win":60.8,"tower":159000000,"cards":[{"id":26000056,"v":"evo"},{"id":26000069,"v":""},{"id":26000012,"v":"evo"},{"id":26000097,"v":""},{"id":26000040,"v":""},{"id":28000026,"v":""},{"id":26000053,"v":""},{"id":27000000,"v":""}]},{"name":"Loon HeroKnight Double Dragon Bowler","win":56.9,"tower":159000000,"cards":[{"id":26000015,"v":"evo"},{"id":26000000,"v":"hero"},{"id":26000037,"v":"evo"},{"id":26000006,"v":""},{"id":26000034,"v":""},{"id":28000012,"v":""},{"id":28000005,"v":""},{"id":28000015,"v":""}]}]}];
 const META_CORES = [26000003, 26000006, 26000009, 26000021, 26000024, 26000029, 26000032, 26000036, 26000038, 26000051, 26000056, 26000058, 26000059, 26000060, 26000067, 26000085, 26000099, 26000101, 26000107, 27000002, 27000008, 27000013, 28000004, 28000010];
 const META_SPELLS = [28000000, 28000001, 28000002, 28000003, 28000004, 28000005, 28000006, 28000007, 28000008, 28000009, 28000010, 28000011, 28000012, 28000013, 28000014, 28000015, 28000017, 28000018, 28000023, 28000024, 28000026];
 /* ---------- 基础工具 ---------- */
@@ -1262,7 +1302,8 @@ function syncDeckFilter(){       // 只切类名，不重建 DOM
 const TABS = {
   "1v1":    { title: "我的卡组",    kind: "mine" },
   "hot1v1": { title: "热门1v1卡组",  kind: "hot" },
-  "duel":   { title: "决斗卡组",    kind: "dev" },
+  "duel":   { title: "决斗",        kind: "dev" },
+  "hotduel":{ title: "热门决斗组合",  kind: "hotduel" },
   "2v2":    { title: "我的2v2卡组",  kind: "dev" },
   "hot2v2": { title: "热门2v2卡组",  kind: "dev" },
 };
@@ -1309,6 +1350,32 @@ const defer = (typeof window !== "undefined" && window.requestIdleCallback)
   ? cb => window.requestIdleCallback(cb, { timeout: 200 })
   : cb => setTimeout(cb, 1);
 
+/* 决斗组合卡片：这一页最大的单位是「4 套卡组」，不是单套。
+   每套只给「查看」（点开就是导入链接 / 二维码）—— 决斗要往游戏里一套一套导入，
+   直接把链接摆出来最省事。 */
+function duelCardHtml(combo, ci){
+  const rows = combo.decks.map((dk, di) => {
+    const d = metaNorm(dk);
+    const tw = byId.get(d.tower || DEFAULT_TOWER);
+    return `<div class="duelrow" data-ci="${ci}" data-di="${di}" title="查看这套卡组的导入链接">
+      <div class="dname"><span class="dt">${escapeHtml(dk.name)}</span>${typeof dk.win === "number" ? `<span class="dw">${dk.win}%</span>` : ""}</div>
+      <div class="tilecards">
+        <div class="leftcol">${tw ? `<div class="tower-mini" title="塔防：${escapeHtml(tw.name)}">${thumbHtml(d.tower, "")}</div>` : ""}</div>
+        <div class="thumbs">${d.cards.map((c, k) => thumbHtml(c.id, effectiveVariant(k, c.id, c.v))).join("")}</div>
+      </div>
+      <button class="opbtn view" title="查看卡组 / 导入链接">查看</button>
+    </div>`;
+  }).join("");
+  return `<div class="duel">
+    <div class="dhead">
+      <span class="drank">#${combo.rank}</span>
+      <span>组合胜率 <b>${combo.win}%</b></span>
+      <span class="dhint">4 套卡组 · 卡不重复</span>
+    </div>
+    ${rows}
+  </div>`;
+}
+
 function deckCardHtml(deck, i, user){
   const cores = deck.cards.filter(c => (byId.get(c.id) || {}).core);
   const warns = deckWarnings(deck);
@@ -1334,6 +1401,14 @@ function deckCardHtml(deck, i, user){
 
 /* 事件委托：整个列表只挂一个监听器 */
 decksEl.addEventListener("click", e => {
+  // 决斗组合：点哪一套就打开哪一套的详情（含导入链接 / 二维码）
+  const drow = e.target.closest(".duelrow");
+  if(drow){
+    const combo = META_DUELS[Number(drow.dataset.ci)];
+    const dk = combo && combo.decks[Number(drow.dataset.di)];
+    if(dk) openDetail(metaNorm(dk));
+    return;
+  }
   const card = e.target.closest(".deck");
   if(!card) return;
   const metaName = card.dataset.name || "";
@@ -1374,8 +1449,17 @@ function render(){
   $("#filterPanel").style.display = "";                     // 所有标签页都有卡组筛选
   syncDeckFilter();
   $("#devbox").style.display = tab.kind === "dev" ? "" : "none";
+  decksEl.classList.toggle("duelmode", tab.kind === "hotduel");
   if(tab.kind === "dev"){ decksEl.innerHTML = ""; $("#emptybox").style.display = "none"; return; }
   $("#emptybox").style.display = (tab.kind === "mine" && decks.length === 0) ? "" : "none";
+  // HOT 决斗：按「组合」过滤 —— 组合里只要有任意一套命中筛选条件就留下
+  if(tab.kind === "hotduel"){
+    const combos = META_DUELS
+      .map((c, i) => ({ c, i }))
+      .filter(x => x.c.decks.some(d => deckMatchFilter(metaNorm(d))));
+    decksEl.innerHTML = combos.map(x => duelCardHtml(x.c, x.i)).join("");
+    return;
+  }
   const items = (tab.kind === "mine"
     ? decks.map((d, i) => ({ deck: d, i, user: true }))
     : META_DECKS.map(d => ({ deck: metaNorm(d), user: false }))
@@ -1868,7 +1952,7 @@ $("#copyBtn").addEventListener("click", () => currentDetailDeck && copyText(webL
 $("#copyDeepBtn").addEventListener("click", () => currentDetailDeck && copyText(deepLink(currentDetailDeck)));
 document.querySelectorAll("[data-close]").forEach(b => b.addEventListener("click", () => $("#" + b.dataset.close).close()));
 
-const APP_VERSION = "v8.4 · 2026-09-14";
+const APP_VERSION = "v8.5 · 2026-09-15";
 $("#ver").textContent = "版本 " + APP_VERSION;
 console.log("cr-copy-deck", APP_VERSION);
 
