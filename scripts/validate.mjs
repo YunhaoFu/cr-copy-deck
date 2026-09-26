@@ -135,7 +135,10 @@ check(META_CORES.length === 24 && META_CORES.slice().sort((a, b) => a - b).join(
 // （2026-09-15 曾误加进核心表，09-26 被用户纠正后回退。）
 check(!META_CORES.includes(27000010), "锅炉 Furnace 不在核心筛选表里（它不是只打建筑的单位）");
 check(CARDS.some(c => c.id === 27000010 && c.core === 0), "锅炉在卡池里 core = 0");
-check(CARDS.some(c => c.id === 27000010 && c.t === 3), "锅炉仍是建筑（t=3），且保留在「建筑」筛选里");
+// 锅炉的归类（用户 2026-09-26 明确要求）：**后排**，不是建筑。
+check(CARDS.some(c => c.id === 27000010 && c.back === 1), "锅炉归入「后排」（back = 1）");
+check(CARDS.some(c => c.id === 27000010 && c.t !== 3), "锅炉不在「建筑」里（t ≠ 3）");
+check(CARDS.some(c => c.id === 27000010 && c.t === 1), "锅炉归在「部队」这一大类下（t = 1）");
 check(CARDS.some(c => c.id === 27000010 && c.cost === 4), "锅炉是 4 费");
 check(CARDS.some(c => c.id === 27000010 && c.evo === 1), "锅炉可觉醒");
 // 建筑里只有这三张能算核心，其余刷怪/防御建筑都不算

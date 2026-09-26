@@ -828,7 +828,7 @@ const CARDS = [
   {"id": 27000007, "name": "Elixir Collector", "cost": 6, "slug": "elixir-collector", "h": "BGLo3Grsp81c72EpxLLk-Sofk3VY56zahnUNOv3JcT0", "evo": 0, "hero": 0, "champ": 0, "rar": "rare", "t": 3, "air": 0, "back": 0, "core": 0, "special": 0},
   {"id": 27000008, "name": "X-Bow", "cost": 6, "slug": "x-bow", "h": "zVQ9Hme1hlj9Dc6e1ORl9xWwglcSrP7ejow5mAhLUJc", "evo": 0, "hero": 0, "champ": 0, "rar": "epic", "t": 3, "air": 0, "back": 0, "core": 1, "special": 1},
   {"id": 27000009, "name": "Tombstone", "cost": 3, "slug": "tombstone", "h": "LjSfSbwQfkZuRJY4pVxKspZ-a0iM5KAhU8w-a_N5Z7Y", "evo": 0, "hero": 1, "champ": 0, "rar": "rare", "t": 3, "air": 0, "back": 0, "core": 0, "special": 0},
-  {"id": 27000010, "name": "Furnace", "cost": 4, "slug": "furnace", "h": "iqbDiG7yYRIzvCPXdt9zPb3IvMt7F7Gi4wIPnh2x4aI", "evo": 1, "hero": 0, "champ": 0, "rar": "rare", "t": 3, "air": 0, "back": 0, "core": 0, "special": 0},
+  {"id": 27000010, "name": "Furnace", "cost": 4, "slug": "furnace", "h": "iqbDiG7yYRIzvCPXdt9zPb3IvMt7F7Gi4wIPnh2x4aI", "evo": 1, "hero": 0, "champ": 0, "rar": "rare", "t": 1, "air": 0, "back": 1, "core": 0, "special": 0},
   {"id": 27000012, "name": "Goblin Cage", "cost": 4, "slug": "goblin-cage", "h": "vD24bBgK4rSq7wx5QEbuqChtPMRFviL_ep76GwQw1yA", "evo": 1, "hero": 0, "champ": 0, "rar": "rare", "t": 3, "air": 0, "back": 0, "core": 0, "special": 0},
   {"id": 27000013, "name": "Goblin Drill", "cost": 4, "slug": "goblin-drill", "h": "eN2TKUYbih-26yBi0xy5LVFOA0zDftgDqxxnVfdIg1o", "evo": 1, "hero": 0, "champ": 0, "rar": "epic", "t": 3, "air": 0, "back": 0, "core": 1, "special": 1},
   {"id": 28000000, "name": "Fireball", "cost": 4, "slug": "fireball", "h": "lZD9MILQv7O-P3XBr_xOLS5idwuz3_7Ws9G60U36yhc", "evo": 0, "hero": 0, "champ": 0, "rar": "rare", "t": 2, "air": 0, "back": 0, "core": 0, "special": 0},
@@ -1952,7 +1952,7 @@ $("#copyBtn").addEventListener("click", () => currentDetailDeck && copyText(webL
 $("#copyDeepBtn").addEventListener("click", () => currentDetailDeck && copyText(deepLink(currentDetailDeck)));
 document.querySelectorAll("[data-close]").forEach(b => b.addEventListener("click", () => $("#" + b.dataset.close).close()));
 
-const APP_VERSION = "v8.7 · 2026-09-26";
+const APP_VERSION = "v8.8 · 2026-09-26";
 $("#ver").textContent = "版本 " + APP_VERSION;
 console.log("cr-copy-deck", APP_VERSION);
 
