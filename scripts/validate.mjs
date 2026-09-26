@@ -95,7 +95,7 @@ const cores = CARDS.filter((c) => c.core === 1);
 const specials = CARDS.filter((c) => c.core === 1 && c.special === 1);
 const spells = CARDS.filter((c) => c.t === 2);
 const towers = CARDS.filter((c) => c.tower === 1);
-check(cores.length === 24, "核心 24 张", `实际 ${cores.length}`);
+check(cores.length === 25, "核心 25 张（2026-09-15 加了锅炉 Furnace）", `实际 ${cores.length}`);
 check(specials.length === 6, "特殊核心（带 ～ 标识）6 张", `实际 ${specials.length}`);
 const specialSlugs = specials.map((c) => c.slug).sort().join(",");
 check(specialSlugs === "goblin-barrel,goblin-drill,graveyard,miner,mortar,x-bow",
@@ -125,8 +125,15 @@ check(META_DECKS.every((d) => !/^示例/.test(d.name)), "没有示例卡组混�
 section("F. 筛选名单一致性");
 const coreIds = cores.map((c) => c.id).sort((a, b) => a - b);
 const spellIds = spells.map((c) => c.id).sort((a, b) => a - b);
-check(META_CORES.length === 24 && META_CORES.slice().sort((a, b) => a - b).join(",") === coreIds.join(","),
+check(META_CORES.length === 25 && META_CORES.slice().sort((a, b) => a - b).join(",") === coreIds.join(","),
   "META_CORES 与卡池 core 集合一致", `${META_CORES.length} vs ${coreIds.length}`);
+// 锅炉（Furnace, 4 费）曾经只进了卡池、没进核心筛选表，导致筛选面板上找不到它。
+// HOT 卡组里就有一套叫 "Furnace Control"，它确实是当核心用的，所以固定在这里防回归。
+check(META_CORES.includes(27000010), "锅炉 Furnace 在核心筛选表里（筛选面板上能找到）");
+check(CARDS.some(c => c.id === 27000010 && c.core === 1), "锅炉在卡池里标记为 core");
+check(CARDS.some(c => c.id === 27000010 && c.cost === 4), "锅炉是 4 费");
+check(CARDS.some(c => c.id === 27000010 && c.evo === 1), "锅炉可觉醒");
+
 check(META_SPELLS.length === 21 && META_SPELLS.slice().sort((a, b) => a - b).join(",") === spellIds.join(","),
   "META_SPELLS 与卡池法术集合一致", `${META_SPELLS.length} vs ${spellIds.length}`);
 
